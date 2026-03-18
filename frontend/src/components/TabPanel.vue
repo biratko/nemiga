@@ -1,0 +1,211 @@
+<script setup lang="ts">
+import {ref, computed} from 'vue'
+import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
+import type {PanelSort} from '@/types/workspace'
+import type {PanelAPI} from '@/types/panel'
+import FilePanel from './FilePanel.vue'
+import TabBar from './TabBar.vue'
+
+const props = defineProps<{
+    panelId: string
+    tabsState: PanelTabsState
+    isActive: boolean
+    showHidden: boolean
+}>()
+
+const emit = defineEmits<{
+    'tabs-change': [state: PanelTabsState]
+    navigate: [path: string]
+    'sort-change': [sort: PanelSort]
+    drop: [op: 'copy' | 'move', sources: string[], destination: string]
+    extract: [archivePath: string, shiftKey: boolean]
+}>()
+
+const tabs = ref<TabState[]>([...props.tabsState.tabs])
+const activeTabIndex = ref(props.tabsState.activeTabIndex)
+const filePanelRef = ref<PanelAPI>()
+
+const activeTab = computed(() => tabs.value[activeTabIndex.value])
+
+function emitTabsChange() {
+    emit('tabs-change', {tabs: tabs.value, activeTabIndex: activeTabIndex.value})
+}
+
+function snapshotCurrentTab() {
+    const panel = filePanelRef.value
+    if (!panel) return
+    const tab = activeTab.value
+    if (!tab) return
+    tab.path = panel.currentPath
+    tab.cursorIndex = panel.cursorIndex
+    tab.selectedNames = panel.selectedNamesArray
+}
+
+function createTab(path?: string) {
+    const current = activeTab.value
+    const newTab: TabState = {
+        id: crypto.randomUUID(),
+        path: path ?? current?.path ?? '/',
+        sort: current ? {...current.sort} : {key: 'name', dir: 'asc'},
+        cursorIndex: 0,
+        selectedNames: [],
+        mode: 'normal',
+    }
+    snapshotCurrentTab()
+    tabs.value.splice(activeTabIndex.value + 1, 0, newTab)
+    activeTabIndex.value = activeTabIndex.value + 1
+    emitTabsChange()
+}
+
+function closeTab(index: number) {
+    if (tabs.value.length <= 1) return
+    snapshotCurrentTab()
+    tabs.value.splice(index, 1)
+    if (activeTabIndex.value >= tabs.value.length) {
+        activeTabIndex.value = tabs.value.length - 1
+    } else if (index < activeTabIndex.value) {
+        activeTabIndex.value--
+    }
+    emitTabsChange()
+}
+
+function closeOtherTabs(keepIndex: number) {
+    snapshotCurrentTab()
+    const kept = tabs.value[keepIndex]
+    tabs.value = [kept]
+    activeTabIndex.value = 0
+    emitTabsChange()
+}
+
+function activateTab(index: number) {
+    if (index === activeTabIndex.value) return
+    snapshotCurrentTab()
+    const target = tabs.value[index]
+    if (target.mode === 'fixed' && target.fixedPath) {
+        target.path = target.fixedPath
+        target.cursorIndex = 0
+        target.selectedNames = []
+    }
+    activeTabIndex.value = index
+    emitTabsChange()
+}
+
+function reorderTabs(from: number, to: number) {
+    const tab = tabs.value.splice(from, 1)[0]
+    tabs.value.splice(to, 0, tab)
+    // Adjust active index to follow the active tab
+    if (activeTabIndex.value === from) {
+        activeTabIndex.value = to
+    } else if (from < activeTabIndex.value && to >= activeTabIndex.value) {
+        activeTabIndex.value--
+    } else if (from > activeTabIndex.value && to <= activeTabIndex.value) {
+        activeTabIndex.value++
+    }
+    emitTabsChange()
+}
+
+function setTabMode(index: number, mode: TabMode) {
+    const tab = tabs.value[index]
+    tab.mode = mode
+    if (mode === 'fixed') {
+        const panel = filePanelRef.value
+        tab.fixedPath = (index === activeTabIndex.value && panel) ? panel.currentPath : tab.path
+    } else {
+        tab.fixedPath = undefined
+    }
+    emitTabsChange()
+}
+
+function onBeforeNavigate(path: string) {
+    const tab = activeTab.value
+    if (tab?.mode === 'locked') {
+        createTab(path)
+    }
+}
+
+function onNavigate(path: string) {
+    const tab = activeTab.value
+    if (tab) tab.path = path
+    emit('navigate', path)
+    emitTabsChange()
+}
+
+function onSortChange(sort: PanelSort) {
+    const tab = activeTab.value
+    if (tab) tab.sort = sort
+    emit('sort-change', sort)
+    emitTabsChange()
+}
+
+function onDrop(op: 'copy' | 'move', sources: string[], destination: string) {
+    emit('drop', op, sources, destination)
+}
+
+function onExtract(archivePath: string, shiftKey: boolean) {
+    emit('extract', archivePath, shiftKey)
+}
+
+defineExpose({
+    get currentPath() { return filePanelRef.value?.currentPath ?? activeTab.value?.path ?? '/' },
+    get cursorIndex() { return filePanelRef.value?.cursorIndex ?? 0 },
+    get cursorEntry() { return filePanelRef.value?.cursorEntry ?? null },
+    get selectedNamesArray() { return filePanelRef.value?.selectedNamesArray ?? [] },
+    get selectedEntries() { return filePanelRef.value?.selectedEntries ?? [] },
+    loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]}) { return filePanelRef.value?.loadDirectory(path, restoreState) },
+    moveCursorUp() { filePanelRef.value?.moveCursorUp() },
+    moveCursorDown() { filePanelRef.value?.moveCursorDown() },
+    enterCursor() { filePanelRef.value?.enterCursor() },
+    goUp() { filePanelRef.value?.goUp() },
+    toggleCursorSelection() { filePanelRef.value?.toggleCursorSelection() },
+    setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
+    startRename() { filePanelRef.value?.startRename() },
+    createTab,
+    closeTab() { closeTab(activeTabIndex.value) },
+})
+</script>
+
+<template>
+    <div class="tab-panel">
+        <FilePanel
+            v-if="activeTab"
+            :key="activeTab.id"
+            ref="filePanelRef"
+            :panel-id="panelId"
+            :initial-path="activeTab.path"
+            :initial-sort-key="activeTab.sort.key"
+            :initial-sort-dir="activeTab.sort.dir"
+            :initial-cursor-index="activeTab.cursorIndex"
+            :initial-selected-names="activeTab.selectedNames"
+            :is-active="isActive"
+            :show-hidden="showHidden"
+            :intercept-navigation="activeTab.mode === 'locked'"
+            @before-navigate="onBeforeNavigate"
+            @navigate="onNavigate"
+            @sort-change="onSortChange"
+            @drop="onDrop"
+            @extract="onExtract"
+        >
+            <template #after-header>
+                <TabBar
+                    :tabs="tabs"
+                    :active-tab-index="activeTabIndex"
+                    @activate="activateTab"
+                    @close="closeTab"
+                    @close-others="closeOtherTabs"
+                    @reorder="reorderTabs"
+                    @set-mode="setTabMode"
+                />
+            </template>
+        </FilePanel>
+    </div>
+</template>
+
+<style scoped>
+.tab-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+}
+</style>

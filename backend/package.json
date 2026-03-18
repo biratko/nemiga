@@ -1,0 +1,26 @@
+{
+  "name": "tacom-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx watch src/main.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "tar-stream": "^3.1.8",
+    "ws": "^8.19.0",
+    "yauzl-promise": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "@types/tar-stream": "^3.1.4",
+    "@types/ws": "^8.18.1",
+    "@types/yauzl-promise": "^4.0.1",
+    "tsx": "^4.19.0",
+    "typescript": "~5.7.0"
+  }
+}

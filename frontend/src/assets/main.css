@@ -1,0 +1,113 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg-primary: #1e1e2e;
+  --bg-panel: #252535;
+  --bg-header: #2a2a3c;
+  --bg-row-hover: #303045;
+  --bg-row-alt: #2a2a3c;
+  --bg-row-selected: #3a3a5c;
+  --text-selected: #f38ba8;
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-dir: #89b4fa;
+  --text-symlink: #f5c2e7;
+  --text-archive: #a6e3a1;
+  --text-error: #f38ba8;
+  --border: #45475a;
+  --accent: #89b4fa;
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --font-family: 'Consolas', 'Courier New', monospace;
+  --font-size: 13px;
+  --font-size-sm: 12px;
+  --font-size-xs: 11px;
+  --font-weight-dir: bold;
+  --cursor-outline-width: 1px;
+  --cursor-outline-style: solid;
+  --cursor-outline-color: #89b4fa;
+  --selection-font-style: normal;
+}
+
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Shared dialog styles */
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.dialog-footer button {
+  padding: 3px 10px;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.dialog-footer button:hover {
+  background: var(--bg-row-hover);
+}
+
+.current-file {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.progress-bar-wrap {
+  height: 14px;
+  background: var(--bg-header);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-bar-indeterminate {
+  height: 100%;
+  width: 30%;
+  background: var(--accent);
+  animation: indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(433%); }
+}
+
+.progress-stats {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.done-msg {
+  font-size: 13px;
+}
+
+.error-msg {
+  color: var(--text-error);
+  font-size: var(--font-size);
+}

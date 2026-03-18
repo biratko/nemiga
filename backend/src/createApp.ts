@@ -1,0 +1,54 @@
+import http from 'node:http'
+import {createServer} from './server.js'
+import {LocalProvider} from './providers/LocalProvider.js'
+import {ProviderRouter} from './providers/ProviderRouter.js'
+import {PathGuard} from './providers/pathGuard.js'
+import {ArchiveProvider} from './archive/ArchiveProvider.js'
+import {ZipAdapter} from './archive/adapters/ZipAdapter.js'
+import {TarAdapter} from './archive/adapters/TarAdapter.js'
+import {SevenZipAdapter} from './archive/adapters/SevenZipAdapter.js'
+import {WsServer} from './ws/WsServer.js'
+import {JsonFileStorage} from './storage/JsonFileStorage.js'
+import {WorkspaceService} from './workspace/WorkspaceService.js'
+import {SettingsService} from './settings/SettingsService.js'
+
+export interface AppInstance {
+    server: http.Server
+    cleanup(): Promise<void>
+}
+
+export interface AppOptions {
+    allowedRoots?: string[]
+    frontendDist?: string
+}
+
+export function createApp(options: AppOptions = {}): AppInstance {
+    const pathGuard = new PathGuard(options.allowedRoots)
+
+    const provider = new LocalProvider()
+    const archiveProvider = new ArchiveProvider()
+    archiveProvider.registerAdapter(new ZipAdapter())
+    archiveProvider.registerAdapter(new TarAdapter())
+    archiveProvider.registerAdapter(new SevenZipAdapter())
+    const router = new ProviderRouter(provider, archiveProvider, pathGuard)
+    const storage = new JsonFileStorage()
+    const workspaceService = new WorkspaceService(storage)
+    const settingsService = new SettingsService(storage)
+    const wsServer = new WsServer(router, settingsService)
+
+    const app = createServer(router, workspaceService, settingsService, pathGuard, {
+        frontendDist: options.frontendDist,
+    })
+    const server = http.createServer(app)
+    wsServer.attach(server)
+
+    async function cleanup() {
+        wsServer.close()
+        await archiveProvider.cleanup().catch(() => {})
+        await new Promise<void>((resolve, reject) => {
+            server.close((err) => err ? reject(err) : resolve())
+        })
+    }
+
+    return {server, cleanup}
+}

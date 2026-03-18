@@ -1,0 +1,31 @@
+import type {ThemeDefinition} from './types'
+
+export default {
+    name: 'dark',
+    label: 'Dark',
+    tokens: {
+        'bg-primary': '#1e1e2e',
+        'bg-panel': '#252535',
+        'bg-header': '#2a2a3c',
+        'bg-row-hover': '#303045',
+        'bg-row-alt': '#2a2a3c',
+        'bg-row-selected': '#3a3a5c',
+        'text-primary': '#cdd6f4',
+        'text-secondary': '#a6adc8',
+        'text-dir': '#89b4fa',
+        'text-symlink': '#f5c2e7',
+        'text-error': '#f38ba8',
+        border: '#45475a',
+        accent: '#89b4fa',
+        backdrop: 'rgba(0, 0, 0, 0.6)',
+        'font-family': "'Consolas', 'Courier New', monospace",
+        'font-size': '13px',
+        'font-size-sm': '12px',
+        'font-size-xs': '11px',
+        'font-weight-dir': 'bold',
+        'cursor-outline-width': '1px',
+        'cursor-outline-style': 'solid',
+        'cursor-outline-color': '#89b4fa',
+        'selection-font-style': 'normal',
+    },
+} satisfies ThemeDefinition

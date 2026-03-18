@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaCom</title>
+  </head>
+  <body>
+    <script>
+      // bg-primary values must match themes/dark.ts and themes/light.ts
+      (function() {
+        var bgMap = { dark: '#1e1e2e', light: '#eff1f5' };
+        var theme = localStorage.getItem('tacom-theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', theme);
+        if (bgMap[theme]) document.documentElement.style.backgroundColor = bgMap[theme];
+      })();
+    </script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

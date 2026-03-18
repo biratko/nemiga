@@ -1,0 +1,55 @@
+{
+  "name": "tacom-electron",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TaCom — dual-panel file manager",
+  "author": "Alexander B <alexanderb@users.noreply.github.com>",
+  "homepage": "https://github.com/alexanderb/tacom",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.js",
+    "start": "electron dist/main.js",
+    "dev": "node build.js && electron dist/main.js",
+    "dist": "node build.js && electron-builder --linux AppImage",
+    "dist:deb": "node build.js && electron-builder --linux deb"
+  },
+  "dependencies": {
+    "@node-rs/crc32": "^1.10.6"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^26.0.0",
+    "esbuild": "^0.25.0",
+    "express": "^5.1.0",
+    "tar-stream": "^3.1.8",
+    "ws": "^8.19.0",
+    "yauzl-promise": "^4.0.0"
+  },
+  "build": {
+    "appId": "com.tacom.app",
+    "productName": "TaCom",
+    "files": [
+      "dist/main.js",
+      "dist/preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist"
+      }
+    ],
+    "linux": {
+      "target": ["AppImage"],
+      "category": "System",
+      "artifactName": "${productName}-${version}"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.utilities"
+    },
+    "win": {
+      "target": ["nsis"]
+    }
+  }
+}

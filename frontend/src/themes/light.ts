@@ -1,0 +1,31 @@
+import type {ThemeDefinition} from './types'
+
+export default {
+    name: 'light',
+    label: 'Light',
+    tokens: {
+        'bg-primary': '#eff1f5',
+        'bg-panel': '#e6e9ef',
+        'bg-header': '#dce0e8',
+        'bg-row-hover': '#ccd0da',
+        'bg-row-alt': '#dce0e8',
+        'bg-row-selected': '#bcc0cc',
+        'text-primary': '#4c4f69',
+        'text-secondary': '#6c6f85',
+        'text-dir': '#1e66f5',
+        'text-symlink': '#ea76cb',
+        'text-error': '#d20f39',
+        border: '#9ca0b0',
+        accent: '#1e66f5',
+        backdrop: 'rgba(0, 0, 0, 0.4)',
+        'font-family': "'Consolas', 'Courier New', monospace",
+        'font-size': '13px',
+        'font-size-sm': '12px',
+        'font-size-xs': '11px',
+        'font-weight-dir': 'bold',
+        'cursor-outline-width': '1px',
+        'cursor-outline-style': 'solid',
+        'cursor-outline-color': '#1e66f5',
+        'selection-font-style': 'normal',
+    },
+} satisfies ThemeDefinition
