@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import {ref, onMounted, onUnmounted} from 'vue'
+import {ref, onMounted, onUnmounted, provide} from 'vue'
 import ModalDialog from './ModalDialog.vue'
-import type {SettingsState, KeyBindings} from '@/types/settings'
+import SettingsAppearance from './SettingsAppearance.vue'
+import SettingsKeyBindings from './SettingsKeyBindings.vue'
+import SettingsFileTypes from './SettingsFileTypes.vue'
+import SettingsSystem from './SettingsSystem.vue'
+import type {SettingsState, KeyBindings, FileTypeOverride} from '@/types/settings'
 import {saveSettings} from '@/api/settings'
 import {useTheme} from '@/composables/useTheme'
-import {themeNames, themes} from '@/themes'
 
 const props = defineProps<{
     initialSettings?: SettingsState
@@ -14,11 +17,22 @@ const emit = defineEmits<{close: [settings?: SettingsState]}>()
 
 const {currentTheme, applyTheme} = useTheme()
 
-const showHidden = ref(props.initialSettings?.showHidden ?? false)
-const followSymlinks = ref(props.initialSettings?.followSymlinks ?? true)
-const editor = ref(props.initialSettings?.editor ?? '')
-const viewer = ref(props.initialSettings?.viewer ?? '')
-const selectedTheme = ref(currentTheme.value)
+type TabId = 'appearance' | 'keybindings' | 'filetypes' | 'system'
+const activeTab = ref<TabId>('appearance')
+
+// Shared flag so child components (SettingsKeyBindings) can block dialog-level
+// Escape/Enter while they are capturing a key press.
+const capturingKey = ref(false)
+provide('capturingKey', capturingKey)
+
+const tabs: {id: TabId; icon: string; label: string}[] = [
+    {id: 'appearance', icon: '🎨', label: 'Look'},
+    {id: 'keybindings', icon: '⌨', label: 'Keys'},
+    {id: 'filetypes', icon: '📄', label: 'Types'},
+    {id: 'system', icon: '⚙', label: 'System'},
+]
+
+const theme = ref(currentTheme.value)
 const originalTheme = ref(currentTheme.value)
 const bindings = ref<KeyBindings>({
     cursorUp: 'ArrowUp',
@@ -28,58 +42,23 @@ const bindings = ref<KeyBindings>({
     switchPanel: 'Tab',
     ...props.initialSettings?.keyBindings,
 })
-const capturingKey = ref<keyof KeyBindings | null>(null)
-
-const themeOptions = themeNames
-
-function onThemeChange() {
-    applyTheme(selectedTheme.value)
-}
+const showHidden = ref(props.initialSettings?.showHidden ?? false)
+const followSymlinks = ref(props.initialSettings?.followSymlinks ?? true)
+const showToolbar = ref(props.initialSettings?.showToolbar ?? true)
+const editor = ref(props.initialSettings?.editor ?? '')
+const viewer = ref(props.initialSettings?.viewer ?? '')
+const fileTypes = ref<Record<string, FileTypeOverride>>({...(props.initialSettings?.fileTypes ?? {})})
 
 function onKeydown(e: KeyboardEvent) {
     e.stopPropagation()
+    // Don't handle Escape/Enter while key capture is active in KeyBindings tab
     if (capturingKey.value) return
     if (e.key === 'Escape') cancel()
     else if (e.key === 'Enter') save()
 }
 
-onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 onMounted(() => document.addEventListener('keydown', onKeydown))
-
-const bindingLabels: Record<keyof KeyBindings, string> = {
-    cursorUp: 'Cursor Up',
-    cursorDown: 'Cursor Down',
-    navigateIn: 'Navigate Into',
-    navigateUp: 'Navigate Up',
-    switchPanel: 'Switch Panel',
-}
-
-function formatKey(key: string): string {
-    const map: Record<string, string> = {
-        ArrowUp: 'Up',
-        ArrowDown: 'Down',
-        ArrowLeft: 'Left',
-        ArrowRight: 'Right',
-        ' ': 'Space',
-    }
-    return map[key] ?? key
-}
-
-function startCapture(field: keyof KeyBindings) {
-    capturingKey.value = field
-}
-
-function handleCapture(e: KeyboardEvent) {
-    if (!capturingKey.value) return
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.key === 'Escape') {
-        capturingKey.value = null
-        return
-    }
-    bindings.value[capturingKey.value] = e.key
-    capturingKey.value = null
-}
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 function cancel() {
     applyTheme(originalTheme.value)
@@ -90,182 +69,158 @@ async function save() {
     const state: SettingsState = {
         showHidden: showHidden.value,
         followSymlinks: followSymlinks.value,
+        showToolbar: showToolbar.value,
         keyBindings: {...bindings.value},
-        theme: selectedTheme.value,
+        theme: theme.value,
         editor: editor.value,
         viewer: viewer.value,
+        fileTypes: fileTypes.value,
     }
-    localStorage.setItem('tacom-theme', selectedTheme.value)
+    localStorage.setItem('tacom-theme', theme.value)
     await saveSettings(state)
     emit('close', state)
 }
 </script>
 
 <template>
-    <ModalDialog title="Settings">
+    <ModalDialog title="Settings" :wide="true">
         <template #default>
-            <div class="section">
-                <div class="section-title">Appearance</div>
-                <div class="theme-row">
-                    <label class="theme-label">Theme</label>
-                    <select v-model="selectedTheme" @change="onThemeChange" class="theme-select">
-                        <option v-for="t in themeOptions" :key="t" :value="t">{{ themes[t].label }}</option>
-                    </select>
+            <div class="settings-layout">
+                <nav class="sidebar">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.id"
+                        class="sidebar-item"
+                        :class="{active: activeTab === tab.id}"
+                        @click="activeTab = tab.id"
+                    >
+                        <span class="sidebar-icon">{{ tab.icon }}</span>
+                        <span class="sidebar-label">{{ tab.label }}</span>
+                    </button>
+                </nav>
+                <div class="tab-content">
+                    <div class="tab-body">
+                        <SettingsAppearance
+                            v-if="activeTab === 'appearance'"
+                            :theme="theme"
+                            @update:theme="theme = $event"
+                        />
+                        <SettingsKeyBindings
+                            v-if="activeTab === 'keybindings'"
+                            :bindings="bindings"
+                            @update:bindings="bindings = $event"
+                        />
+                        <SettingsFileTypes
+                            v-if="activeTab === 'filetypes'"
+                            :file-types="fileTypes"
+                            @update:file-types="fileTypes = $event"
+                        />
+                        <SettingsSystem
+                            v-if="activeTab === 'system'"
+                            :show-hidden="showHidden"
+                            :follow-symlinks="followSymlinks"
+                            :show-toolbar="showToolbar"
+                            :viewer="viewer"
+                            :editor="editor"
+                            @update:show-hidden="showHidden = $event"
+                            @update:follow-symlinks="followSymlinks = $event"
+                            @update:show-toolbar="showToolbar = $event"
+                            @update:viewer="viewer = $event"
+                            @update:editor="editor = $event"
+                        />
+                    </div>
+                    <div class="dialog-footer">
+                        <button class="btn-save" @click="save">Save</button>
+                        <button @click="cancel">Cancel</button>
+                    </div>
                 </div>
-            </div>
-            <div class="section">
-                <div class="section-title">General</div>
-                <label class="checkbox-row">
-                    <input type="checkbox" v-model="showHidden" />
-                    <span>Show hidden files</span>
-                </label>
-                <label class="checkbox-row">
-                    <input type="checkbox" v-model="followSymlinks" />
-                    <span>Follow symlinks when copying</span>
-                </label>
-                <div class="editor-row">
-                    <label class="editor-label">Viewer</label>
-                    <input type="text" v-model="viewer" class="editor-input" placeholder="/usr/bin/less" />
-                </div>
-                <div class="editor-row">
-                    <label class="editor-label">Editor</label>
-                    <input type="text" v-model="editor" class="editor-input" placeholder="/usr/bin/subl" />
-                </div>
-            </div>
-            <div class="section">
-                <div class="section-title">Key Bindings</div>
-                <div class="bindings-grid">
-                    <template v-for="(label, field) in bindingLabels" :key="field">
-                        <div class="binding-label">{{ label }}</div>
-                        <button
-                            class="binding-value"
-                            :class="{capturing: capturingKey === field}"
-                            @click="startCapture(field)"
-                            @keydown="capturingKey === field && handleCapture($event)"
-                        >
-                            {{ capturingKey === field ? 'Press a key...' : formatKey(bindings[field]) }}
-                        </button>
-                    </template>
-                </div>
-            </div>
-            <div class="dialog-footer">
-                <button class="btn-save" @click="save">Save</button>
-                <button @click="cancel">Cancel</button>
             </div>
         </template>
     </ModalDialog>
 </template>
 
 <style scoped>
-.theme-row {
+.settings-layout {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex: 1;
+    min-height: 0;
 }
 
-.theme-label {
-    font-size: var(--font-size);
-    color: var(--text-primary);
-}
-
-.theme-select {
-    padding: 3px 10px;
-    background: var(--bg-header);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    font-family: inherit;
-    font-size: var(--font-size-sm);
-    cursor: pointer;
-}
-
-.theme-select:hover {
-    background: var(--bg-row-hover);
-}
-
-.section {
+.sidebar {
+    width: 150px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    padding: 4px 0;
 }
 
-.section-title {
-    font-size: var(--font-size-xs);
-    font-weight: bold;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.checkbox-row {
+.sidebar-item {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: var(--font-size);
+    padding: 8px 12px;
+    background: transparent;
     color: var(--text-primary);
-    cursor: pointer;
-}
-
-.checkbox-row input[type="checkbox"] {
-    accent-color: var(--accent);
-}
-
-.editor-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.editor-label {
-    font-size: var(--font-size);
-    color: var(--text-primary);
-}
-
-.editor-input {
-    flex: 1;
-    padding: 3px 10px;
-    background: var(--bg-header);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
-    font-family: inherit;
-    font-size: var(--font-size-sm);
-}
-
-.editor-input:focus {
-    outline: none;
-    border-color: var(--accent);
-}
-
-.bindings-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4px 12px;
-    align-items: center;
-}
-
-.binding-label {
-    font-size: var(--font-size);
-    color: var(--text-primary);
-}
-
-.binding-value {
-    padding: 3px 10px;
-    background: var(--bg-header);
-    color: var(--text-primary);
-    border: 1px solid var(--border);
+    border: none;
     cursor: pointer;
     font-family: inherit;
-    font-size: var(--font-size-sm);
-    text-align: center;
-    min-width: 80px;
+    font-size: var(--font-size);
+    text-align: left;
 }
 
-.binding-value:hover {
+.sidebar-item:hover {
     background: var(--bg-row-hover);
 }
 
-.binding-value.capturing {
-    border-color: var(--accent);
+.sidebar-item.active {
+    background: var(--bg-row-selected);
     color: var(--accent);
+}
+
+.sidebar-icon {
+    font-size: 16px;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-label {
+    white-space: nowrap;
+}
+
+.tab-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+}
+
+.dialog-footer {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+}
+
+.dialog-footer button {
+    padding: 4px 16px;
+    background: var(--bg-panel);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.dialog-footer button:hover {
+    background: var(--bg-row-hover);
 }
 
 .btn-save {
