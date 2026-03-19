@@ -1,4 +1,4 @@
-import type {WebSocket} from 'ws'
+import {WebSocket} from 'ws'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {ErrorCode} from '../protocol/errors.js'
 
@@ -11,13 +11,13 @@ export abstract class BaseConnectionHandler {
     abstract handleMessage(msg: unknown): void
 
     protected send(event: object): void {
-        if (this.ws.readyState === 1 /* WebSocket.OPEN */) {
+        if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(event))
         }
     }
 
     protected closeWs(): void {
-        if (this.ws.readyState === 1 /* WebSocket.OPEN */) {
+        if (this.ws.readyState === WebSocket.OPEN) {
             this.ws.close(1000, 'operation done')
         }
     }
