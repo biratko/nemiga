@@ -6,6 +6,11 @@ export interface KeyBindings {
     switchPanel: string
 }
 
+export interface FileTypeOverride {
+    icon?: string
+    program?: string
+}
+
 export interface SettingsState {
     showHidden?: boolean
     followSymlinks?: boolean
@@ -13,4 +18,6 @@ export interface SettingsState {
     theme?: string
     editor?: string
     viewer?: string
+    showToolbar?: boolean
+    fileTypes?: Record<string, FileTypeOverride>
 }

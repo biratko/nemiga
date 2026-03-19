@@ -16,6 +16,9 @@ function getDefaults(): SettingsState {
         },
         theme: 'dark',
         editor: '',
+        viewer: '',
+        showToolbar: true,
+        fileTypes: {},
     }
 }
 
