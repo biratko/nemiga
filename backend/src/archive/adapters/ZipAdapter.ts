@@ -47,7 +47,8 @@ export class ZipAdapter implements CreatableAdapter {
                         symlink_target: null,
                     })
                 } else {
-                    const ext = fileName.includes('.') ? fileName.split('.').pop()! : null
+                    const baseName = fileName.includes('/') ? fileName.substring(fileName.lastIndexOf('/') + 1) : fileName
+                    const ext = baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
                     entries.push({
                         name: fileName,
                         type: 'file',
@@ -55,7 +56,7 @@ export class ZipAdapter implements CreatableAdapter {
                         modified: decodeDosDateTime(entry.lastModDate, (entry as any).lastModTime).toISOString(),
                         permissions: '-rw-r--r--',
                         extension: ext,
-                        hidden: fileName.split('/').pop()!.startsWith('.'),
+                        hidden: baseName.startsWith('.'),
                         symlink_target: null,
                     })
                 }

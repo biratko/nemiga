@@ -68,13 +68,13 @@ export class TarAdapter implements CreatableAdapter {
                         modified,
                         permissions,
                         extension: null,
-                        hidden: name.split('/').pop()!.startsWith('.'),
+                        hidden: name.substring(name.lastIndexOf('/') + 1).startsWith('.'),
                         symlink_target: null,
                     })
                 }
             } else {
-                const baseName = name.split('/').pop()!
-                const ext = baseName.includes('.') ? baseName.split('.').pop()! : null
+                const baseName = name.substring(name.lastIndexOf('/') + 1)
+                const ext = baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
                 entries.push({
                     name,
                     type: header.type === 'symlink' ? 'symlink' : 'file',

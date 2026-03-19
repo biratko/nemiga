@@ -98,13 +98,13 @@ export class SevenZipAdapter implements CreatableAdapter {
                         modified,
                         permissions: 'drwxr-xr-x',
                         extension: null,
-                        hidden: cleanName.split('/').pop()!.startsWith('.'),
+                        hidden: cleanName.substring(cleanName.lastIndexOf('/') + 1).startsWith('.'),
                         symlink_target: null,
                     })
                 }
             } else {
-                const baseName = cleanName.split('/').pop()!
-                const ext = baseName.includes('.') ? baseName.split('.').pop()! : null
+                const baseName = cleanName.substring(cleanName.lastIndexOf('/') + 1)
+                const ext = baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
                 entries.push({
                     name: cleanName,
                     type: 'file',
