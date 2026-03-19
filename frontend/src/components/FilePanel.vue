@@ -9,6 +9,7 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import ContextMenu from '@/components/ContextMenu.vue'
+import FileIcon from '@/components/FileIcon.vue'
 import { formatSize, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 
@@ -348,19 +349,20 @@ onBeforeUnmount(() => {
             @mouseenter="rightMouseEnter(entry)"
           >
             <td class="col-name">
-              <input v-if="renamingEntry === entry.name"
-                     class="rename-input"
-                     v-model="renameValue"
-                     @keydown.stop
-                     @keydown.enter.prevent="commitRename()"
-                     @keydown.esc="cancelRename()"
-                     @blur="cancelRename()"
-                     @vue:mounted="focusRenameInput"
-                     @click.stop
-                     @dblclick.stop />
-              <span v-else-if="entry.type === 'directory'">[{{ entry.name }}]</span>
-              <span v-else-if="entry.isArchive">[{{ entry.name }}]</span>
-              <span v-else>{{ entry.name }}</span>
+              <span class="name-cell">
+                <FileIcon :entry="entry" />
+                <input v-if="renamingEntry === entry.name"
+                       class="rename-input"
+                       v-model="renameValue"
+                       @keydown.stop
+                       @keydown.enter.prevent="commitRename()"
+                       @keydown.esc="cancelRename()"
+                       @blur="cancelRename()"
+                       @vue:mounted="focusRenameInput"
+                       @click.stop
+                       @dblclick.stop />
+                <span v-else>{{ entry.name }}</span>
+              </span>
             </td>
             <td class="col-size">{{ formatSize(entry) }}</td>
             <td class="col-date">{{ formatDate(entry.modified) }}</td>
@@ -474,6 +476,18 @@ onBeforeUnmount(() => {
 .col-size { width: 20%; text-align: right; }
 .col-date { width: 20%; text-align: right; }
 
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.name-cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .entry {
   height: 19px;
 }
@@ -552,7 +566,8 @@ onBeforeUnmount(() => {
 }
 
 .rename-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);
