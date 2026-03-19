@@ -6,34 +6,7 @@ import path from 'node:path'
 import {pipeline} from 'node:stream/promises'
 import type {PackOptions} from '../CreatableAdapter.js'
 import {run7z} from './7z-utils.js'
-
-async function collectFiles(srcPath: string): Promise<{relativePath: string; size: number}[]> {
-    const stat = await fsp.stat(srcPath)
-    const baseName = path.basename(srcPath)
-
-    if (!stat.isDirectory()) {
-        return [{relativePath: baseName, size: stat.size}]
-    }
-
-    const results: {relativePath: string; size: number}[] = []
-
-    async function walk(dir: string, prefix: string) {
-        const entries = await fsp.readdir(dir, {withFileTypes: true})
-        for (const entry of entries) {
-            const fullPath = path.join(dir, entry.name)
-            const relPath = prefix ? prefix + '/' + entry.name : entry.name
-            if (entry.isDirectory()) {
-                await walk(fullPath, relPath)
-            } else {
-                const st = await fsp.stat(fullPath)
-                results.push({relativePath: relPath, size: st.size})
-            }
-        }
-    }
-
-    await walk(srcPath, baseName)
-    return results
-}
+import {collectFiles, copyDir} from './7z-fs-utils.js'
 
 export async function createWith7z(
     archivePath: string,
@@ -91,20 +64,6 @@ export async function createWith7z(
         // If cancelled, also remove partial archive
         if (options.cancelled()) {
             await fsp.rm(archivePath, {force: true}).catch(() => {})
-        }
-    }
-}
-
-async function copyDir(src: string, dest: string): Promise<void> {
-    await fsp.mkdir(dest, {recursive: true})
-    const entries = await fsp.readdir(src, {withFileTypes: true})
-    for (const entry of entries) {
-        const srcPath = path.join(src, entry.name)
-        const destPath = path.join(dest, entry.name)
-        if (entry.isDirectory()) {
-            await copyDir(srcPath, destPath)
-        } else {
-            await pipeline(createReadStream(srcPath), createWriteStream(destPath))
         }
     }
 }
