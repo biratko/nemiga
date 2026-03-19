@@ -5,6 +5,8 @@ import path from 'node:path'
 import {pipeline} from 'node:stream/promises'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
+import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
+import {createWith7z} from './createWith7z.js'
 import {addImplicitDirs} from '../implicitDirs.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
@@ -19,7 +21,7 @@ function decodeDosDateTime(date: number, time: number): Date {
     return new Date(year, month, day, hour, min, sec)
 }
 
-export class ZipAdapter implements ArchiveAdapter {
+export class ZipAdapter implements CreatableAdapter {
     readonly extensions = ['.zip', '.jar', '.war']
 
     async listEntries(archivePath: string): Promise<FSEntry[]> {
@@ -162,6 +164,10 @@ export class ZipAdapter implements ArchiveAdapter {
 
     async add(archivePath: string, innerDestPath: string, sourcePaths: string[], options: ExtractOptions): Promise<{filesDone: number; bytesWritten: number}> {
         return addWith7z(archivePath, innerDestPath, sourcePaths, options)
+    }
+
+    async create(archivePath: string, sourcePaths: string[], options: PackOptions): Promise<{filesDone: number; bytesWritten: number; skipped: number}> {
+        return createWith7z(archivePath, sourcePaths, options)
     }
 
     async deleteEntries(archivePath: string, innerPaths: string[]): Promise<{deleted: number}> {
