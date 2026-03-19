@@ -31,6 +31,7 @@ const emit = defineEmits<{
   'sort-change': [sort: {key: 'name' | 'size' | 'modified'; dir: 'asc' | 'desc'}]
   drop: [op: 'copy' | 'move', sources: string[], destination: string]
   extract: [archivePath: string, shiftKey: boolean]
+  pack: [sourcePaths: string[], shiftKey: boolean]
 }>()
 
 const panelContentRef = ref<HTMLElement | null>(null)
@@ -89,6 +90,18 @@ function handleContextMenuSelect(action: string, event: MouseEvent) {
     const entry = menuState.value.entry
     const fullPath = joinPath(currentPath.value, entry.name)
     emit('extract', fullPath, event.shiftKey)
+  } else if (action === 'pack') {
+    const sources: string[] = []
+    if (selectedNames.value.size > 0) {
+      for (const name of selectedNames.value) {
+        sources.push(joinPath(currentPath.value, name))
+      }
+    } else if (menuState.value.entry) {
+      sources.push(joinPath(currentPath.value, menuState.value.entry.name))
+    }
+    if (sources.length > 0) {
+      emit('pack', sources, event.shiftKey)
+    }
   }
   closeMenu()
 }
