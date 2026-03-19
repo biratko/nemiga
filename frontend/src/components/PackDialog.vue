@@ -82,12 +82,12 @@ function startPack() {
     wsHandle.onEvent('progress', (data) => {
         currentFile.value = data.current_file
         filesDone.value = data.files_done
-        totalFiles.value = data.total_files
+        totalFiles.value = data.total_files ?? 0
     })
 
     wsHandle.onEvent('complete', (data) => {
         filesDone.value = data.files_done
-        totalFiles.value = data.total_files
+        totalFiles.value = data.total_files ?? 0
         archiveSize.value = data.archive_size
         skippedFiles.value = data.skipped
         phase.value = 'done'

@@ -228,13 +228,13 @@ export interface WsPackProgressEvent {
     event: 'progress'
     current_file: string
     files_done: number
-    total_files: number
+    total_files?: number
 }
 
 export interface WsPackCompleteEvent {
     event: 'complete'
     files_done: number
-    total_files: number
+    total_files?: number
     archive_size: number
     skipped: number
 }

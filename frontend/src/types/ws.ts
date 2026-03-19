@@ -35,7 +35,7 @@ export type ExtractEvents = {
 }
 
 export type PackEvents = {
-    progress: {event: 'progress'; current_file: string; files_done: number; total_files: number}
-    complete: {event: 'complete'; files_done: number; total_files: number; archive_size: number; skipped: number}
+    progress: {event: 'progress'; current_file: string; files_done: number; total_files?: number}
+    complete: {event: 'complete'; files_done: number; total_files?: number; archive_size: number; skipped: number}
     error: {event: 'error'; error: OperationError}
 }

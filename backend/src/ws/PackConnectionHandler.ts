@@ -116,12 +116,6 @@ export class PackConnectionHandler extends BaseConnectionHandler {
                 // File does not exist — good
             }
 
-            // Count total files recursively
-            let totalFiles = 0
-            for (const p of sourcePaths) {
-                totalFiles += await countFiles(p)
-            }
-
             const result = await adapter.create(archivePath, sourcePaths, {
                 onProgress: (info) => {
                     const now = Date.now()
@@ -131,7 +125,6 @@ export class PackConnectionHandler extends BaseConnectionHandler {
                             event: 'progress',
                             current_file: info.currentFile,
                             files_done: info.filesDone,
-                            total_files: totalFiles,
                         })
                     }
                 },
@@ -144,7 +137,6 @@ export class PackConnectionHandler extends BaseConnectionHandler {
             handler.send({
                 event: 'complete',
                 files_done: result.filesDone,
-                total_files: totalFiles,
                 archive_size: stat.size,
                 skipped: result.skipped,
             })
@@ -160,21 +152,6 @@ export class PackConnectionHandler extends BaseConnectionHandler {
             handler.closeWs()
         })
     }
-}
-
-async function countFiles(p: string): Promise<number> {
-    const stat = await fs.stat(p)
-    if (!stat.isDirectory()) return 1
-    let count = 0
-    const entries = await fs.readdir(p, {withFileTypes: true})
-    for (const entry of entries) {
-        if (entry.isDirectory()) {
-            count += await countFiles(path.join(p, entry.name))
-        } else {
-            count++
-        }
-    }
-    return count
 }
 
 function isValidCommand(msg: unknown): msg is WsPackClientCommand {
