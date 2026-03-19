@@ -7,7 +7,7 @@ import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {isArchivePath} from '../archive/ArchiveProvider.js'
 import {isCreatableAdapter} from '../archive/CreatableAdapter.js'
-import {BaseConnectionHandler} from './BaseConnectionHandler.js'
+import {BaseConnectionHandler, PROGRESS_THROTTLE_MS} from './BaseConnectionHandler.js'
 import {fromPosix} from '../utils/platformPath.js'
 
 export class PackConnectionHandler extends BaseConnectionHandler {
@@ -125,7 +125,7 @@ export class PackConnectionHandler extends BaseConnectionHandler {
             const result = await adapter.create(archivePath, sourcePaths, {
                 onProgress: (info) => {
                     const now = Date.now()
-                    if (now - lastProgressTime >= 100) {
+                    if (now - lastProgressTime >= PROGRESS_THROTTLE_MS) {
                         lastProgressTime = now
                         handler.send({
                             event: 'progress',

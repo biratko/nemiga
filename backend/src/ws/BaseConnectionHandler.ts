@@ -2,6 +2,8 @@ import type {WebSocket} from 'ws'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {ErrorCode} from '../protocol/errors.js'
 
+export const PROGRESS_THROTTLE_MS = 100
+
 export abstract class BaseConnectionHandler {
     protected constructor(protected ws: WebSocket) {}
 

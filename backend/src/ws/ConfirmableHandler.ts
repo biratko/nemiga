@@ -4,7 +4,7 @@ import type {ConfirmAction, UserConfirmAction} from '../protocol/fs-types.js'
 import type {ProviderRouter} from '../providers/ProviderRouter.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
-import {BaseConnectionHandler} from './BaseConnectionHandler.js'
+import {BaseConnectionHandler, PROGRESS_THROTTLE_MS} from './BaseConnectionHandler.js'
 import {normalizeSendPayload, fromPosix} from '../utils/platformPath.js'
 
 export abstract class ConfirmableHandler extends BaseConnectionHandler {
@@ -71,7 +71,7 @@ export abstract class ConfirmableHandler extends BaseConnectionHandler {
             progress: {
                 report: (info) => {
                     const now = Date.now()
-                    if (now - lastProgressTime >= 100) {
+                    if (now - lastProgressTime >= PROGRESS_THROTTLE_MS) {
                         lastProgressTime = now
                         handler.send(normalizeSendPayload({event: 'progress', ...info}))
                     }
