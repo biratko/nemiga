@@ -12,6 +12,7 @@ import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
 import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
 import {addImplicitDirs} from '../implicitDirs.js'
+import {stripSlashes} from '../pathUtils.js'
 
 type Compression = 'none' | 'gzip' | 'bzip2'
 
@@ -413,7 +414,7 @@ export class TarAdapter implements CreatableAdapter {
     async mkdirEntry(archivePath: string, innerPath: string): Promise<void> {
         const compression = detectCompression(archivePath)
         const tmpPath = archivePath + '.tacom-tmp-' + crypto.randomUUID()
-        const normalized = innerPath.replace(/^\/+|\/+$/g, '')
+        const normalized = stripSlashes(innerPath)
 
         try {
             const pack = tar.pack()

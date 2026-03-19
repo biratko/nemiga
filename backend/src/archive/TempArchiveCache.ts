@@ -2,6 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import type {ArchiveAdapter} from './ArchiveAdapter.js'
+import {stripSlashes} from './pathUtils.js'
 
 interface CacheEntry {
     tempPath: string
@@ -38,7 +39,7 @@ export class TempArchiveCache {
 
         await fs.mkdir(this.tmpBase, {recursive: true})
         const tempDir = await fs.mkdtemp(path.join(this.tmpBase, 'nested-'))
-        const normalized = innerArchivePath.replace(/^\/+|\/+$/g, '')
+        const normalized = stripSlashes(innerArchivePath)
 
         await adapter.extract(archivePath, [normalized], tempDir, {
             onProgress: () => {},

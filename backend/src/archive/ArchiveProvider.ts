@@ -5,6 +5,7 @@ import type {ListResult, CopyResult, MoveResult, DeleteResult, MkdirResult, Rena
 import {ErrorCode} from '../protocol/errors.js'
 import type {ArchiveAdapter} from './ArchiveAdapter.js'
 import {TempArchiveCache} from './TempArchiveCache.js'
+import {stripSlashes} from './pathUtils.js'
 
 export const ARCHIVE_SEPARATOR = '::'
 
@@ -119,7 +120,7 @@ export class ArchiveProvider implements FileSystemProvider {
         }
 
         // Normalize innerPath: remove leading/trailing slashes
-        const normalizedInner = innerPath.replace(/^\/+|\/+$/g, '')
+        const normalizedInner = stripSlashes(innerPath)
 
         // Filter entries that are direct children of innerPath
         const result: FSEntry[] = []
@@ -190,7 +191,7 @@ export class ArchiveProvider implements FileSystemProvider {
             return {ok: false, error: {code: ErrorCode.INTERNAL, message: `No adapter for archive: ${archivePath}`}}
         }
 
-        const innerPaths = resolved.map(p => p.innerPath.replace(/^\/+|\/+$/g, ''))
+        const innerPaths = resolved.map(p => stripSlashes(p.innerPath))
 
         try {
             const result = await adapter.extract(archivePath, innerPaths, destination, {
@@ -217,7 +218,7 @@ export class ArchiveProvider implements FileSystemProvider {
         } catch (err: any) {
             return {ok: false, error: {code: ErrorCode.INTERNAL, message: err.message}}
         }
-        const innerDest = innerPath.replace(/^\/+|\/+$/g, '')
+        const innerDest = stripSlashes(innerPath)
 
         const adapter = this.findAdapter(archivePath)
         if (!adapter) {
@@ -309,7 +310,7 @@ export class ArchiveProvider implements FileSystemProvider {
             return {ok: false, error: {code: ErrorCode.INTERNAL, message: `No adapter for archive: ${archivePath}`}}
         }
 
-        const innerPaths = resolved.map(p => p.innerPath.replace(/^\/+|\/+$/g, ''))
+        const innerPaths = resolved.map(p => stripSlashes(p.innerPath))
 
         try {
             const result = await adapter.deleteEntries(archivePath, innerPaths)
