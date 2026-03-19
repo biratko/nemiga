@@ -35,6 +35,7 @@ const currentFile = ref('')
 const filesDone = ref(0)
 const totalFiles = ref(0)
 const archiveSize = ref(0)
+const skippedFiles = ref(0)
 const opError = ref<{code: string; message: string} | null>(null)
 
 // Auto-update extension when format changes
@@ -88,6 +89,7 @@ function startPack() {
         filesDone.value = data.files_done
         totalFiles.value = data.total_files
         archiveSize.value = data.archive_size
+        skippedFiles.value = data.skipped
         phase.value = 'done'
     })
 
@@ -104,6 +106,13 @@ function startPack() {
         archiveName: archiveName.value,
         overwrite: overwrite.value,
     })
+}
+
+function retryWithOverwrite() {
+    cleanup()
+    overwrite.value = true
+    opError.value = null
+    startPack()
 }
 
 function cancel() {
@@ -183,7 +192,10 @@ onUnmounted(() => {
         </template>
 
         <template v-else-if="phase === 'done'">
-            <div class="done-msg">Packed {{ filesDone }} file(s), {{ formatSize(archiveSize) }}</div>
+            <div class="done-msg">
+                Packed {{ filesDone }} file(s), {{ formatSize(archiveSize) }}
+                <template v-if="skippedFiles > 0"> ({{ skippedFiles }} skipped)</template>
+            </div>
             <div class="dialog-footer">
                 <button @click="emit('close', true)">Close</button>
             </div>
@@ -192,6 +204,7 @@ onUnmounted(() => {
         <template v-else-if="phase === 'error'">
             <div class="error-msg">Error ({{ opError?.code }}): {{ opError?.message }}</div>
             <div class="dialog-footer">
+                <button v-if="opError?.code === 'ALREADY_EXISTS'" @click="retryWithOverwrite">Overwrite</button>
                 <button @click="emit('close', false)">Close</button>
             </div>
         </template>

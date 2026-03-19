@@ -282,6 +282,9 @@ export class TarAdapter implements CreatableAdapter {
             return {filesDone, bytesWritten, skipped}
         } finally {
             await fsp.rm(tmpPath, {force: true}).catch(() => {})
+            if (options.cancelled()) {
+                await fsp.rm(archivePath, {force: true}).catch(() => {})
+            }
         }
     }
 
