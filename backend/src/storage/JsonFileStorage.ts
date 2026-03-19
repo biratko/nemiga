@@ -1,9 +1,9 @@
 import {readFile, writeFile, mkdir} from 'node:fs/promises'
 import {join} from 'node:path'
-import os from 'node:os'
+import envPaths from 'env-paths'
 import type {StorageProvider} from './StorageProvider.js'
 
-const configDir = join(os.homedir(), '.config', 'tacom')
+const configDir = envPaths('tacom', {suffix: ''}).config
 const VALID_KEY = /^[a-z0-9_-]+$/
 
 export class JsonFileStorage implements StorageProvider {

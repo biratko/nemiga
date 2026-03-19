@@ -10,6 +10,7 @@ import {createWriteStream} from 'node:fs'
 import * as tar from 'tar-stream'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
+import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
 import {addImplicitDirs} from '../implicitDirs.js'
 
 type Compression = 'none' | 'gzip' | 'bzip2'
@@ -33,7 +34,7 @@ function createCompressStream(compression: Compression) {
     return null
 }
 
-export class TarAdapter implements ArchiveAdapter {
+export class TarAdapter implements CreatableAdapter {
     readonly extensions = ['.tar', '.tar.gz', '.tgz', '.tar.bz2', '.tbz2']
 
     async listEntries(archivePath: string): Promise<FSEntry[]> {
@@ -244,6 +245,46 @@ export class TarAdapter implements ArchiveAdapter {
             return {filesDone, bytesWritten}
         } finally {
             await fsp.rm(tmpPath, {force: true}).catch(() => {})
+        }
+    }
+
+    async create(archivePath: string, sourcePaths: string[], options: PackOptions): Promise<{filesDone: number; bytesWritten: number; skipped: number}> {
+        const compression = detectCompression(archivePath)
+        const tmpPath = archivePath + '.tacom-tmp-' + crypto.randomUUID()
+        let filesDone = 0
+        let bytesWritten = 0
+        let skipped = 0
+
+        try {
+            const pack = tar.pack()
+            const writeStream = createWriteStream(tmpPath)
+            const compressor = createCompressStream(compression)
+            const pipelineDone = compressor
+                ? pipeline(pack, compressor, writeStream)
+                : pipeline(pack, writeStream)
+
+            for (const srcPath of sourcePaths) {
+                if (options.cancelled()) break
+                try {
+                    await this.packPath(pack, srcPath, '', options as unknown as ExtractOptions, (added) => {
+                        filesDone += added.files
+                        bytesWritten += added.bytes
+                    })
+                } catch {
+                    skipped++
+                }
+            }
+
+            pack.finalize()
+            await pipelineDone
+
+            await fsp.rename(tmpPath, archivePath)
+            return {filesDone, bytesWritten, skipped}
+        } finally {
+            await fsp.rm(tmpPath, {force: true}).catch(() => {})
+            if (options.cancelled()) {
+                await fsp.rm(archivePath, {force: true}).catch(() => {})
+            }
         }
     }
 

@@ -9,6 +9,7 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import ContextMenu from '@/components/ContextMenu.vue'
+import FileIcon from '@/components/FileIcon.vue'
 import { formatSize, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 
@@ -30,6 +31,7 @@ const emit = defineEmits<{
   'sort-change': [sort: {key: 'name' | 'size' | 'modified'; dir: 'asc' | 'desc'}]
   drop: [op: 'copy' | 'move', sources: string[], destination: string]
   extract: [archivePath: string, shiftKey: boolean]
+  pack: [sourcePaths: string[], shiftKey: boolean]
 }>()
 
 const panelContentRef = ref<HTMLElement | null>(null)
@@ -88,6 +90,18 @@ function handleContextMenuSelect(action: string, event: MouseEvent) {
     const entry = menuState.value.entry
     const fullPath = joinPath(currentPath.value, entry.name)
     emit('extract', fullPath, event.shiftKey)
+  } else if (action === 'pack') {
+    const sources: string[] = []
+    if (selectedNames.value.size > 0) {
+      for (const name of selectedNames.value) {
+        sources.push(joinPath(currentPath.value, name))
+      }
+    } else if (menuState.value.entry) {
+      sources.push(joinPath(currentPath.value, menuState.value.entry.name))
+    }
+    if (sources.length > 0) {
+      emit('pack', sources, event.shiftKey)
+    }
   }
   closeMenu()
 }
@@ -283,6 +297,7 @@ onBeforeUnmount(() => {
     @dragleave="onDragLeavePanel"
     @drop="handleDrop($event, null)"
   >
+    <slot name="before-header" />
     <div class="panel-header">
       <span class="path">{{ currentPath }}</span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
@@ -292,7 +307,6 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <slot name="after-header" />
     <div class="panel-content" ref="panelContentRef">
       <table class="file-table">
         <thead>
@@ -348,19 +362,20 @@ onBeforeUnmount(() => {
             @mouseenter="rightMouseEnter(entry)"
           >
             <td class="col-name">
-              <input v-if="renamingEntry === entry.name"
-                     class="rename-input"
-                     v-model="renameValue"
-                     @keydown.stop
-                     @keydown.enter.prevent="commitRename()"
-                     @keydown.esc="cancelRename()"
-                     @blur="cancelRename()"
-                     @vue:mounted="focusRenameInput"
-                     @click.stop
-                     @dblclick.stop />
-              <span v-else-if="entry.type === 'directory'">[{{ entry.name }}]</span>
-              <span v-else-if="entry.isArchive">[{{ entry.name }}]</span>
-              <span v-else>{{ entry.name }}</span>
+              <span class="name-cell">
+                <FileIcon :entry="entry" />
+                <input v-if="renamingEntry === entry.name"
+                       class="rename-input"
+                       v-model="renameValue"
+                       @keydown.stop
+                       @keydown.enter.prevent="commitRename()"
+                       @keydown.esc="cancelRename()"
+                       @blur="cancelRename()"
+                       @vue:mounted="focusRenameInput"
+                       @click.stop
+                       @dblclick.stop />
+                <span v-else>{{ entry.name }}</span>
+              </span>
             </td>
             <td class="col-size">{{ formatSize(entry) }}</td>
             <td class="col-date">{{ formatDate(entry.modified) }}</td>
@@ -397,9 +412,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 1px 8px;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
 }
@@ -472,6 +488,18 @@ onBeforeUnmount(() => {
 .col-name { width: 60%; }
 .col-size { width: 20%; text-align: right; }
 .col-date { width: 20%; text-align: right; }
+
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  overflow: hidden;
+}
+
+.name-cell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .entry {
   height: 19px;
@@ -551,7 +579,8 @@ onBeforeUnmount(() => {
 }
 
 .rename-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   box-sizing: border-box;
   border: 1px solid var(--border-color);
   background: var(--bg-primary);

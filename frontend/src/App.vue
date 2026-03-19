@@ -6,6 +6,7 @@ import MoveDialog from './components/MoveDialog.vue'
 import DeleteDialog from './components/DeleteDialog.vue'
 import MkdirDialog from './components/MkdirDialog.vue'
 import ExtractDialog from './components/ExtractDialog.vue'
+import PackDialog from './components/PackDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
 import type {KeyBindings, SettingsState} from '@/types/settings'
 import type {PanelAPI} from '@/types/panel'
@@ -41,6 +42,7 @@ const {initTheme, applyTheme} = useTheme()
 const {copyOp, moveOp, deleteOp, mkdirOp, startCopy, startMove, startDelete, startMkdir} = useFileOperations(activePanel, leftPanel, rightPanel)
 
 const extractOp = ref<{archivePath: string; destination: string; archiveName: string; subfolder: string; skipInput: boolean} | null>(null)
+const packOp = ref<{defaultName: string; sourcePaths: string[]; destination: string} | null>(null)
 
 const ARCHIVE_SUFFIXES = ['.tar.gz', '.tar.bz2', '.tar.xz', '.tar', '.zip', '.7z', '.gz', '.bz2']
 
@@ -65,6 +67,31 @@ function startExtract(archivePath: string, shiftKey: boolean) {
         archiveName,
         subfolder,
         skipInput: shiftKey,
+    }
+}
+
+function startPack(sourcePaths: string[]) {
+    const opposite = activePanel.value === 'left' ? rightPanel.value : leftPanel.value
+    const destination = opposite?.currentPath ?? '/'
+
+    // Default archive name: single item = item name, multiple = parent folder name
+    let defaultName: string
+    if (sourcePaths.length === 1) {
+        defaultName = sourcePaths[0].split('/').pop() ?? 'archive'
+    } else {
+        const active = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
+        const dir = active?.currentPath ?? '/'
+        defaultName = dir.split('/').pop() || 'archive'
+    }
+
+    packOp.value = {defaultName, sourcePaths, destination}
+}
+
+function onPackClose(packed: boolean) {
+    packOp.value = null
+    if (packed) {
+        leftPanel.value?.loadDirectory(leftPanel.value.currentPath)
+        rightPanel.value?.loadDirectory(rightPanel.value.currentPath)
     }
 }
 
@@ -242,7 +269,7 @@ function handleMousedown(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value) return
+    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value) return
 
     const b = keyBindings.value
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
@@ -391,6 +418,7 @@ onUnmounted(() => {
                     @sort-change="sort => onSortChange('left', sort)"
                     @drop="onDrop"
                     @extract="startExtract"
+                    @pack="startPack"
                 />
                 <TabPanel
                     ref="rightPanel"
@@ -403,10 +431,11 @@ onUnmounted(() => {
                     @sort-change="sort => onSortChange('right', sort)"
                     @drop="onDrop"
                     @extract="startExtract"
+                    @pack="startPack"
                 />
             </template>
         </div>
-        <div class="toolbar">
+        <div v-if="currentSettings.showToolbar !== false" class="toolbar">
             <button class="toolbar-btn" @click="openInViewer">F3 View</button>
             <button class="toolbar-btn" @click="openInEditor">F4 Edit</button>
             <button class="toolbar-btn" @click="startCopy">F5 Copy</button>
@@ -445,6 +474,13 @@ onUnmounted(() => {
             :subfolder="extractOp.subfolder"
             :skip-input="extractOp.skipInput"
             @close="onExtractClose"
+        />
+        <PackDialog
+            v-if="packOp"
+            :default-name="packOp.defaultName"
+            :source-paths="packOp.sourcePaths"
+            :destination="packOp.destination"
+            @close="onPackClose"
         />
         <SettingsDialog
             v-if="showSettings"

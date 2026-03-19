@@ -20,6 +20,10 @@ const showUnpack = computed(() =>
   props.entry?.isArchive === true && !props.hasMultiSelect
 )
 
+const showPack = computed(() =>
+  props.entry != null && props.entry.name !== '..' && props.entry.isArchive !== true
+)
+
 function onClickOutside(e: MouseEvent) {
   if (menuEl.value?.contains(e.target as Node)) return
   emit('close')
@@ -54,6 +58,9 @@ onBeforeUnmount(() => {
     </div>
     <div v-if="showUnpack" class="context-menu-item" @click="emit('select', 'extract', $event)">
       Unpack
+    </div>
+    <div v-if="showPack" class="context-menu-item" @click="emit('select', 'pack', $event)">
+        Pack to...
     </div>
   </div>
 </template>

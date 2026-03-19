@@ -1,11 +1,11 @@
 import type {Request, Response} from 'express'
 import type {SettingsService} from '../settings/SettingsService.js'
-import type {SettingsState, KeyBindings} from '../protocol/settings-types.js'
+import type {SettingsState, KeyBindings, FileTypeOverride} from '../protocol/settings-types.js'
 import {ErrorCode} from '../protocol/errors.js'
 
 function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     const result: SettingsState = {}
-    const allowed = new Set(['showHidden', 'followSymlinks', 'keyBindings', 'theme', 'editor', 'viewer'])
+    const allowed = new Set(['showHidden', 'followSymlinks', 'keyBindings', 'theme', 'editor', 'viewer', 'showToolbar', 'fileTypes'])
 
     for (const key of Object.keys(raw)) {
         if (!allowed.has(key)) return null
@@ -30,6 +30,31 @@ function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     if ('viewer' in raw) {
         if (raw.viewer !== undefined && typeof raw.viewer !== 'string') return null
         result.viewer = raw.viewer as string | undefined
+    }
+    if ('showToolbar' in raw) {
+        if (typeof raw.showToolbar !== 'boolean') return null
+        result.showToolbar = raw.showToolbar
+    }
+    if ('fileTypes' in raw) {
+        const ft = raw.fileTypes
+        if (typeof ft !== 'object' || ft === null || Array.isArray(ft)) return null
+        const ftObj = ft as Record<string, unknown>
+        const ftAllowedKeys = new Set(['icon', 'program'])
+        for (const [ext, val] of Object.entries(ftObj)) {
+            if (typeof ext !== 'string') return null
+            if (typeof val !== 'object' || val === null) return null
+            const entry = val as Record<string, unknown>
+            for (const k of Object.keys(entry)) {
+                if (!ftAllowedKeys.has(k)) return null
+                if (entry[k] !== undefined && typeof entry[k] !== 'string') return null
+            }
+        }
+        // Normalize keys to lowercase (spec: case-insensitive, lowercased on save)
+        const normalized: Record<string, FileTypeOverride> = {}
+        for (const [ext, val] of Object.entries(ftObj)) {
+            normalized[ext.toLowerCase()] = val as FileTypeOverride
+        }
+        result.fileTypes = normalized
     }
     if ('keyBindings' in raw) {
         const kb = raw.keyBindings

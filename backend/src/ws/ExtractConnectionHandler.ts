@@ -8,6 +8,7 @@ import {PathGuardError} from '../providers/pathGuard.js'
 import {isArchivePath} from '../archive/ArchiveProvider.js'
 import {BaseConnectionHandler} from './BaseConnectionHandler.js'
 import {stripArchiveSuffix} from './stripArchiveSuffix.js'
+import {fromPosix} from '../utils/platformPath.js'
 
 export class ExtractConnectionHandler extends BaseConnectionHandler {
     private cancelled = false
@@ -38,33 +39,36 @@ export class ExtractConnectionHandler extends BaseConnectionHandler {
         if (this.started) return
         this.started = true
 
+        const archivePath = fromPosix(msg.archivePath)
+        const destPath = fromPosix(msg.destination)
+
         const handler = this
         let lastProgressTime = 0
 
         // Validate paths
         try {
-            this.router.resolve(msg.archivePath) // triggers pathGuard
+            this.router.resolve(archivePath) // triggers pathGuard
         } catch (err) {
             if (err instanceof PathGuardError) { this.sendPathGuardError(err); return }
             throw err
         }
 
         // Reject archive destination
-        if (isArchivePath(msg.destination)) {
+        if (isArchivePath(destPath)) {
             handler.send({event: 'error', error: {code: ErrorCode.INVALID_REQUEST, message: 'Cannot extract to archive path'}})
             handler.closeWs()
             return
         }
 
         try {
-            this.router.resolve(msg.destination) // triggers pathGuard
+            this.router.resolve(destPath) // triggers pathGuard
         } catch (err) {
             if (err instanceof PathGuardError) { this.sendPathGuardError(err); return }
             throw err
         }
 
         // Find adapter
-        const adapter = this.router.findAdapter(msg.archivePath)
+        const adapter = this.router.findAdapter(archivePath)
         if (!adapter) {
             handler.send({event: 'error', error: {code: ErrorCode.INTERNAL, message: 'No adapter for archive'}})
             handler.closeWs()
@@ -74,21 +78,21 @@ export class ExtractConnectionHandler extends BaseConnectionHandler {
         // Run extraction asynchronously
         ;(async () => {
             // Get all entries to compute total and inner paths
-            const allEntries = await adapter.listEntries(msg.archivePath)
+            const allEntries = await adapter.listEntries(archivePath)
             const totalFiles = allEntries.filter(e => e.type !== 'directory').length
             const innerPaths = allEntries
                 .filter(e => !e.name.includes('/'))
                 .map(e => e.name)
 
             // Compute destination
-            let dest = msg.destination
+            let dest = destPath
             if (msg.toSubfolder) {
-                const subfolder = stripArchiveSuffix(path.basename(msg.archivePath))
+                const subfolder = stripArchiveSuffix(path.basename(archivePath))
                 dest = path.join(dest, subfolder)
             }
             await fs.mkdir(dest, {recursive: true})
 
-            const result = await adapter.extract(msg.archivePath, innerPaths, dest, {
+            const result = await adapter.extract(archivePath, innerPaths, dest, {
                 onProgress: (info) => {
                     const now = Date.now()
                     if (now - lastProgressTime >= 100) {

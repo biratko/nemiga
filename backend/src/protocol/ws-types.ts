@@ -221,3 +221,48 @@ export interface WsExtractCancelCommand {
 export type WsExtractClientCommand =
     | WsExtractStartCommand
     | WsExtractCancelCommand
+
+// ── Pack: Server → Client events ──
+
+export interface WsPackProgressEvent {
+    event: 'progress'
+    current_file: string
+    files_done: number
+    total_files: number
+}
+
+export interface WsPackCompleteEvent {
+    event: 'complete'
+    files_done: number
+    total_files: number
+    archive_size: number
+    skipped: number
+}
+
+export interface WsPackErrorEvent {
+    event: 'error'
+    error: ErrorInfo
+}
+
+export type WsPackServerEvent =
+    | WsPackProgressEvent
+    | WsPackCompleteEvent
+    | WsPackErrorEvent
+
+// ── Pack: Client → Server commands ──
+
+export interface WsPackStartCommand {
+    command: 'start'
+    sourcePaths: string[]
+    destination: string
+    archiveName: string
+    overwrite: boolean
+}
+
+export interface WsPackCancelCommand {
+    command: 'cancel'
+}
+
+export type WsPackClientCommand =
+    | WsPackStartCommand
+    | WsPackCancelCommand

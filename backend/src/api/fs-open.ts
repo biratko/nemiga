@@ -1,13 +1,15 @@
-import {spawn, execFileSync} from 'child_process'
-import fs from 'fs/promises'
+import {spawn} from 'node:child_process'
+import fs from 'node:fs/promises'
+import which from 'which'
 import type {Request, Response} from 'express'
 import type {SettingsService} from '../settings/SettingsService.js'
 import type {PathGuard} from '../providers/pathGuard.js'
 import {ErrorCode} from '../protocol/errors.js'
+import {fromPosix} from '../utils/platformPath.js'
 
 function resolveCommand(cmd: string): string | null {
     try {
-        return execFileSync('which', [cmd], {encoding: 'utf-8'}).trim()
+        return which.sync(cmd)
     } catch {
         return null
     }
@@ -17,17 +19,18 @@ function makeLaunchHandler(settingsService: SettingsService, pathGuard: PathGuar
     const label = settingKey === 'editor' ? 'editor' : 'viewer'
 
     return async (req: Request, res: Response): Promise<void> => {
-        const path = (req.body as {path?: string})?.path
+        const rawPath = (req.body as {path?: string})?.path
 
-        if (!path || typeof path !== 'string') {
+        if (!rawPath || typeof rawPath !== 'string') {
             res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'path is required'}})
             return
         }
 
-        pathGuard.assert(path)
+        const filePath = fromPosix(rawPath)
+        pathGuard.assert(filePath)
 
         try {
-            await fs.access(path)
+            await fs.access(filePath)
         } catch {
             res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'path does not exist'}})
             return
@@ -50,8 +53,8 @@ function makeLaunchHandler(settingsService: SettingsService, pathGuard: PathGuar
         }
 
         try {
-            const args = [...parts.slice(1), path]
-            const child = spawn(cmd, args, {detached: true, stdio: 'ignore'})
+            const args = [...parts.slice(1), filePath]
+            const child = spawn(cmd, args, {detached: process.platform !== 'win32', stdio: 'ignore'})
             child.unref()
             res.json({ok: true})
         } catch (err) {

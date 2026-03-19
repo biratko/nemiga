@@ -19,6 +19,7 @@ const emit = defineEmits<{
     'sort-change': [sort: PanelSort]
     drop: [op: 'copy' | 'move', sources: string[], destination: string]
     extract: [archivePath: string, shiftKey: boolean]
+    pack: [sourcePaths: string[], shiftKey: boolean]
 }>()
 
 const tabs = ref<TabState[]>([...props.tabsState.tabs])
@@ -145,6 +146,10 @@ function onExtract(archivePath: string, shiftKey: boolean) {
     emit('extract', archivePath, shiftKey)
 }
 
+function onPack(sources: string[], shiftKey: boolean) {
+    emit('pack', sources, shiftKey)
+}
+
 defineExpose({
     get currentPath() { return filePanelRef.value?.currentPath ?? activeTab.value?.path ?? '/' },
     get cursorIndex() { return filePanelRef.value?.cursorIndex ?? 0 },
@@ -184,8 +189,9 @@ defineExpose({
             @sort-change="onSortChange"
             @drop="onDrop"
             @extract="onExtract"
+            @pack="onPack"
         >
-            <template #after-header>
+            <template #before-header>
                 <TabBar
                     :tabs="tabs"
                     :active-tab-index="activeTabIndex"

@@ -3,6 +3,8 @@ import fsp from 'node:fs/promises'
 import path from 'node:path'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
+import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
+import {createWith7z} from './createWith7z.js'
 import {addImplicitDirs} from '../implicitDirs.js'
 import {run7z, run7zCapture} from './7z-utils.js'
 import {addWith7z} from './addWith7z.js'
@@ -53,7 +55,7 @@ function parse7zList(output: string): ParsedEntry[] {
 }
 
 
-export class SevenZipAdapter implements ArchiveAdapter {
+export class SevenZipAdapter implements CreatableAdapter {
     readonly extensions = ['.7z', '.rar']
 
     async listEntries(archivePath: string): Promise<FSEntry[]> {
@@ -185,6 +187,13 @@ export class SevenZipAdapter implements ArchiveAdapter {
 
     async add(archivePath: string, innerDestPath: string, sourcePaths: string[], options: ExtractOptions): Promise<{filesDone: number; bytesWritten: number}> {
         return addWith7z(archivePath, innerDestPath, sourcePaths, options)
+    }
+
+    async create(archivePath: string, sourcePaths: string[], options: PackOptions): Promise<{filesDone: number; bytesWritten: number; skipped: number}> {
+        if (archivePath.toLowerCase().endsWith('.rar')) {
+            throw new Error('Creating .rar archives is not supported')
+        }
+        return createWith7z(archivePath, sourcePaths, options)
     }
 
     async deleteEntries(archivePath: string, innerPaths: string[]): Promise<{deleted: number}> {
