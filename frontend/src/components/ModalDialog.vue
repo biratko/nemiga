@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted} from 'vue'
 
-defineProps<{title: string}>()
+defineProps<{title: string; wide?: boolean}>()
 
 const dialogRef = ref<HTMLElement | null>(null)
 let previouslyFocused: HTMLElement | null = null
@@ -53,7 +53,7 @@ onUnmounted(() => {
 
 <template>
     <div class="backdrop">
-        <div class="dialog" ref="dialogRef" tabindex="-1" role="dialog" aria-modal="true">
+        <div class="dialog" :class="{wide}" ref="dialogRef" tabindex="-1" role="dialog" aria-modal="true">
             <div class="dialog-title">{{ title }}</div>
             <div class="dialog-body">
                 <slot />
@@ -79,6 +79,23 @@ onUnmounted(() => {
     min-width: 420px;
     max-width: 600px;
     width: 90%;
+}
+
+.dialog.wide {
+    width: 80%;
+    height: 80%;
+    min-width: auto;
+    max-width: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.dialog.wide .dialog-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0;
+    gap: 0;
 }
 
 .dialog-title {
