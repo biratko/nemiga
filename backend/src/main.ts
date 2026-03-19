@@ -1,11 +1,12 @@
 import net from 'node:net'
+import path from 'node:path'
 import {createApp} from './createApp.js'
 
 const port = parseInt(process.env.PORT || '8080', 10)
 const host = process.env.HOST || '127.0.0.1'
 
 const allowedRoots = process.env.ALLOWED_ROOTS
-    ? process.env.ALLOWED_ROOTS.split(':').filter(Boolean)
+    ? process.env.ALLOWED_ROOTS.split(path.delimiter).filter(Boolean)
     : undefined
 
 const {server, cleanup} = createApp({allowedRoots})
@@ -40,3 +41,4 @@ function shutdown() {
 
 process.on('SIGINT', shutdown)
 process.on('SIGTERM', shutdown)
+process.on('SIGHUP', shutdown)

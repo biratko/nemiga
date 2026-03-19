@@ -4,6 +4,7 @@ import type {WsMkdirClientCommand} from '../protocol/ws-types.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {BaseConnectionHandler} from './BaseConnectionHandler.js'
+import {fromPosix, toPosix} from '../utils/platformPath.js'
 
 export class MkdirConnectionHandler extends BaseConnectionHandler {
     private started = false
@@ -27,9 +28,10 @@ export class MkdirConnectionHandler extends BaseConnectionHandler {
         // nothing to cancel for a single mkdir
     }
 
-    private handleStart(dirPath: string): void {
+    private handleStart(rawPath: string): void {
         if (this.started) return
         this.started = true
+        const dirPath = fromPosix(rawPath)
 
         let provider
         try {
@@ -42,7 +44,7 @@ export class MkdirConnectionHandler extends BaseConnectionHandler {
             .mkdir(dirPath)
             .then((result) => {
                 if (result.ok) {
-                    this.send({event: 'complete', path: result.path})
+                    this.send({event: 'complete', path: toPosix(result.path)})
                 } else {
                     this.send({event: 'error', error: result.error})
                 }

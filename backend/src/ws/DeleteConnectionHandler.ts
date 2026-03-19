@@ -5,6 +5,7 @@ import type {WsDeleteClientCommand} from '../protocol/ws-types.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {BaseConnectionHandler} from './BaseConnectionHandler.js'
+import {fromPosix} from '../utils/platformPath.js'
 
 export class DeleteConnectionHandler extends BaseConnectionHandler {
     private cancelled = false
@@ -31,9 +32,10 @@ export class DeleteConnectionHandler extends BaseConnectionHandler {
         this.cancelled = true
     }
 
-    private handleStart(paths: string[]): void {
+    private handleStart(rawPaths: string[]): void {
         if (this.started) return
         this.started = true
+        const paths = rawPaths.map(fromPosix)
 
         const handler = this
         let lastProgressTime = 0

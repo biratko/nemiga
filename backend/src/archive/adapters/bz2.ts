@@ -1,60 +1,29 @@
-import {spawn} from 'node:child_process'
-import {Duplex} from 'node:stream'
+import {Transform} from 'node:stream'
+import unbzip2 from 'unbzip2-stream'
+import compressjs from 'compressjs'
 
-export function createBzip2(): Duplex {
-    const proc = spawn('bzip2', ['-z'], {stdio: ['pipe', 'pipe', 'ignore']})
-
-    const duplex = new Duplex({
-        write(chunk, _encoding, callback) {
-            if (!proc.stdin.write(chunk)) {
-                proc.stdin.once('drain', callback)
-            } else {
-                callback()
-            }
-        },
-        read() {},
-        final(callback) {
-            proc.stdin.end(callback)
-        },
-    })
-
-    proc.stdout.on('data', (chunk) => {
-        if (!duplex.push(chunk)) {
-            proc.stdout.pause()
-        }
-    })
-    duplex.on('resume', () => proc.stdout.resume())
-    proc.stdout.on('end', () => duplex.push(null))
-    proc.on('error', (err) => duplex.destroy(err))
-
-    return duplex
+/** Streaming bzip2 decompression (handles large files) */
+export function createBunzip2(): Transform {
+    return unbzip2()
 }
 
-export function createBunzip2(): Duplex {
-    const proc = spawn('bzip2', ['-d'], {stdio: ['pipe', 'pipe', 'ignore']})
-
-    const duplex = new Duplex({
-        write(chunk, _encoding, callback) {
-            if (!proc.stdin.write(chunk)) {
-                proc.stdin.once('drain', callback)
-            } else {
+/** Bzip2 compression (buffers entire input — used rarely for tar.bz2 creation) */
+export function createBzip2(): Transform {
+    const chunks: Buffer[] = []
+    return new Transform({
+        transform(chunk, _encoding, callback) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+            callback()
+        },
+        flush(callback) {
+            try {
+                const input = new Uint8Array(Buffer.concat(chunks))
+                const compressed = compressjs.Bzip2.compressFile(input)
+                this.push(Buffer.from(compressed))
                 callback()
+            } catch (err) {
+                callback(err as Error)
             }
         },
-        read() {},
-        final(callback) {
-            proc.stdin.end(callback)
-        },
     })
-
-    proc.stdout.on('data', (chunk) => {
-        if (!duplex.push(chunk)) {
-            proc.stdout.pause()
-        }
-    })
-    duplex.on('resume', () => proc.stdout.resume())
-    proc.stdout.on('end', () => duplex.push(null))
-    proc.on('error', (err) => duplex.destroy(err))
-
-    return duplex
 }

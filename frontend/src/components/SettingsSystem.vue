@@ -6,6 +6,7 @@ const props = defineProps<{
     showToolbar: boolean
     viewer: string
     editor: string
+    platform: string
 }>()
 
 const emit = defineEmits<{
@@ -37,11 +38,11 @@ const emit = defineEmits<{
         <div class="section-title">External Programs</div>
         <div class="field-row">
             <label class="field-label">Viewer</label>
-            <input type="text" :value="viewer" @input="emit('update:viewer', ($event.target as HTMLInputElement).value)" class="field-input" placeholder="/usr/bin/less" />
+            <input type="text" :value="viewer" @input="emit('update:viewer', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'notepad' : '/usr/bin/less'" />
         </div>
         <div class="field-row">
             <label class="field-label">Editor</label>
-            <input type="text" :value="editor" @input="emit('update:editor', ($event.target as HTMLInputElement).value)" class="field-input" placeholder="/usr/bin/subl" />
+            <input type="text" :value="editor" @input="emit('update:editor', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'notepad' : '/usr/bin/subl'" />
         </div>
     </div>
 </template>

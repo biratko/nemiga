@@ -4,6 +4,7 @@ import type {FileTypeOverride} from '@/types/settings'
 
 const props = defineProps<{
     fileTypes: Record<string, FileTypeOverride>
+    platform: string
 }>()
 
 const emit = defineEmits<{
@@ -55,7 +56,7 @@ function updateField(ext: string, field: 'icon' | 'program', value: string) {
                 <tr v-for="(override, ext) in fileTypes" :key="ext">
                     <td class="ext-cell">.{{ ext }}</td>
                     <td><input type="text" :value="override.icon ?? ''" @input="updateField(ext as string, 'icon', ($event.target as HTMLInputElement).value)" class="ft-input icon-input" placeholder="emoji" /></td>
-                    <td><input type="text" :value="override.program ?? ''" @input="updateField(ext as string, 'program', ($event.target as HTMLInputElement).value)" class="ft-input" placeholder="/usr/bin/..." /></td>
+                    <td><input type="text" :value="override.program ?? ''" @input="updateField(ext as string, 'program', ($event.target as HTMLInputElement).value)" class="ft-input" :placeholder="platform === 'win32' ? 'program.exe' : '/usr/bin/...'" /></td>
                     <td><button class="remove-btn" @click="removeRow(ext as string)">Remove</button></td>
                 </tr>
             </tbody>

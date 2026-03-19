@@ -7,6 +7,7 @@ import SettingsFileTypes from './SettingsFileTypes.vue'
 import SettingsSystem from './SettingsSystem.vue'
 import type {SettingsState, KeyBindings, FileTypeOverride} from '@/types/settings'
 import {saveSettings} from '@/api/settings'
+import {getPlatform} from '@/api/platform'
 import {useTheme} from '@/composables/useTheme'
 
 const props = defineProps<{
@@ -48,6 +49,7 @@ const showToolbar = ref(props.initialSettings?.showToolbar ?? true)
 const editor = ref(props.initialSettings?.editor ?? '')
 const viewer = ref(props.initialSettings?.viewer ?? '')
 const fileTypes = ref<Record<string, FileTypeOverride>>({...(props.initialSettings?.fileTypes ?? {})})
+const platform = ref('linux')
 
 function onKeydown(e: KeyboardEvent) {
     e.stopPropagation()
@@ -57,7 +59,10 @@ function onKeydown(e: KeyboardEvent) {
     else if (e.key === 'Enter') save()
 }
 
-onMounted(() => document.addEventListener('keydown', onKeydown))
+onMounted(() => {
+    document.addEventListener('keydown', onKeydown)
+    getPlatform().then(p => { platform.value = p })
+})
 onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 function cancel() {
@@ -113,6 +118,7 @@ async function save() {
                         <SettingsFileTypes
                             v-if="activeTab === 'filetypes'"
                             :file-types="fileTypes"
+                            :platform="platform"
                             @update:file-types="fileTypes = $event"
                         />
                         <SettingsSystem
@@ -122,6 +128,7 @@ async function save() {
                             :show-toolbar="showToolbar"
                             :viewer="viewer"
                             :editor="editor"
+                            :platform="platform"
                             @update:show-hidden="showHidden = $event"
                             @update:follow-symlinks="followSymlinks = $event"
                             @update:show-toolbar="showToolbar = $event"

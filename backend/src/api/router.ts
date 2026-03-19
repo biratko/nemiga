@@ -21,6 +21,9 @@ export function fsRouter(
     router.get('/archive/extensions', (_req, res) => {
         res.json({ok: true, extensions: router_.getArchiveExtensions()})
     })
+    router.get('/platform', (_req, res) => {
+        res.json({ok: true, platform: process.platform})
+    })
     router.get('/workspace', makeGetWorkspaceHandler(workspaceService))
     router.put('/workspace', makePutWorkspaceHandler(workspaceService))
     router.get('/settings', makeGetSettingsHandler(settingsService))

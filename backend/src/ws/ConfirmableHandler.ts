@@ -5,6 +5,7 @@ import type {ProviderRouter} from '../providers/ProviderRouter.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {BaseConnectionHandler} from './BaseConnectionHandler.js'
+import {normalizeSendPayload, fromPosix} from '../utils/platformPath.js'
 
 export abstract class ConfirmableHandler extends BaseConnectionHandler {
     private cancelled = false
@@ -48,9 +49,12 @@ export abstract class ConfirmableHandler extends BaseConnectionHandler {
         destination: string,
     ): ReturnType<ProviderRouter['resolve']>
 
-    private handleStart(sources: string[], destination: string): void {
+    private handleStart(rawSources: string[], rawDestination: string): void {
         if (this.started) return
         this.started = true
+
+        const sources = rawSources.map(fromPosix)
+        const destination = fromPosix(rawDestination)
 
         const handler = this
         let lastProgressTime = 0
@@ -69,7 +73,7 @@ export abstract class ConfirmableHandler extends BaseConnectionHandler {
                     const now = Date.now()
                     if (now - lastProgressTime >= 100) {
                         lastProgressTime = now
-                        handler.send({event: 'progress', ...info})
+                        handler.send(normalizeSendPayload({event: 'progress', ...info}))
                     }
                 },
             },
@@ -81,7 +85,7 @@ export abstract class ConfirmableHandler extends BaseConnectionHandler {
                     const confirmId = 'cfm_' + randomBytes(4).toString('hex')
                     return new Promise<ConfirmAction>((resolve) => {
                         handler.pendingConfirms.set(confirmId, resolve)
-                        handler.send({event: 'confirm', confirm_id: confirmId, ...req})
+                        handler.send(normalizeSendPayload({event: 'confirm', confirm_id: confirmId, ...req}))
                     })
                 },
             },
@@ -96,7 +100,7 @@ export abstract class ConfirmableHandler extends BaseConnectionHandler {
         this.executeOperation(sources, destination, ctx)
             .then((result) => {
                 if (result.ok) {
-                    handler.send({event: 'complete', ...result.data})
+                    handler.send(normalizeSendPayload({event: 'complete', ...result.data}))
                 } else {
                     handler.send({event: 'error', error: result.error})
                 }

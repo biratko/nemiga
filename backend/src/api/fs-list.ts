@@ -2,12 +2,13 @@ import type {Request, Response} from 'express'
 import type {ProviderRouter} from '../providers/ProviderRouter.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {isArchivePath} from '../archive/ArchiveProvider.js'
+import {toPosix, fromPosix} from '../utils/platformPath.js'
 
 export function makeFsListHandler(router: ProviderRouter) {
     const archiveExts = router.getArchiveExtensions()
 
     return async (req: Request, res: Response): Promise<void> => {
-        const dirPath = req.query.path as string | undefined
+        const dirPath = req.query.path ? fromPosix(req.query.path as string) : undefined
 
         if (!dirPath) {
             res.json({
@@ -30,6 +31,10 @@ export function makeFsListHandler(router: ProviderRouter) {
                     }
                 }
             }
+        }
+
+        if (result.ok) {
+            result.path = toPosix(result.path)
         }
 
         res.json(result)
