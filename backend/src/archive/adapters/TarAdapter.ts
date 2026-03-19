@@ -12,7 +12,7 @@ import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
 import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
 import {addImplicitDirs} from '../implicitDirs.js'
-import {stripSlashes} from '../pathUtils.js'
+import {stripSlashes, buildExtractPlan} from '../pathUtils.js'
 
 type Compression = 'none' | 'gzip' | 'bzip2'
 
@@ -110,20 +110,8 @@ export class TarAdapter implements CreatableAdapter {
     async extract(archivePath: string, innerPaths: string[], destDir: string, options: ExtractOptions): Promise<{filesDone: number; bytesWritten: number}> {
         // Build lookup: for each innerPath, collect entries to extract
         const allEntries = await this.listEntries(archivePath)
-        const toExtract = new Map<string, string>() // zipName -> relativeName
-
-        for (const innerPath of innerPaths) {
-            for (const entry of allEntries) {
-                if (entry.name === innerPath) {
-                    const baseName = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    toExtract.set(entry.name, baseName)
-                } else if (entry.name.startsWith(innerPath + '/')) {
-                    const parentDir = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    const relative = parentDir + entry.name.slice(innerPath.length)
-                    toExtract.set(entry.name, relative)
-                }
-            }
-        }
+        const plan = buildExtractPlan(allEntries, innerPaths)
+        const toExtract = new Map(plan.map(p => [p.archiveName, p.relativeName]))
 
         let filesDone = 0
         let bytesWritten = 0
@@ -360,14 +348,8 @@ export class TarAdapter implements CreatableAdapter {
 
         // Build set of paths to skip (including children of directories)
         const allEntries = await this.listEntries(archivePath)
-        const toDelete = new Set<string>()
-        for (const innerPath of innerPaths) {
-            for (const entry of allEntries) {
-                if (entry.name === innerPath || entry.name.startsWith(innerPath + '/')) {
-                    toDelete.add(entry.name)
-                }
-            }
-        }
+        const plan = buildExtractPlan(allEntries, innerPaths)
+        const toDelete = new Set(plan.map(p => p.archiveName))
 
         try {
             const pack = tar.pack()

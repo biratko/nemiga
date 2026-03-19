@@ -10,6 +10,7 @@ import {createWith7z} from './createWith7z.js'
 import {addImplicitDirs} from '../implicitDirs.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
+import {buildExtractPlan} from '../pathUtils.js'
 
 function decodeDosDateTime(date: number, time: number): Date {
     const day = date & 0x1f
@@ -77,24 +78,7 @@ export class ZipAdapter implements CreatableAdapter {
         // Build a set of paths to extract and all their children
         // innerPaths may be directories — we need to extract everything under them
         const allEntries = await this.listEntries(archivePath)
-        const toExtract: Array<{zipName: string; relativeName: string; type: string}> = []
-
-        for (const innerPath of innerPaths) {
-            // Find matching entries — exact match or children
-            for (const entry of allEntries) {
-                const entryName = entry.name
-                if (entryName === innerPath) {
-                    // Exact match — file or directory itself
-                    const baseName = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    toExtract.push({zipName: entryName, relativeName: baseName, type: entry.type})
-                } else if (entryName.startsWith(innerPath + '/')) {
-                    // Child of a directory
-                    const parentDir = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    const relative = parentDir + entryName.slice(innerPath.length)
-                    toExtract.push({zipName: entryName, relativeName: relative, type: entry.type})
-                }
-            }
-        }
+        const toExtract = buildExtractPlan(allEntries, innerPaths)
 
         // Sort: directories first so we create them before extracting files into them
         toExtract.sort((a, b) => {
@@ -120,7 +104,7 @@ export class ZipAdapter implements CreatableAdapter {
             const filesToExtract = new Map<string, string>()
             for (const item of toExtract) {
                 if (item.type !== 'directory') {
-                    filesToExtract.set(item.zipName, item.relativeName)
+                    filesToExtract.set(item.archiveName, item.relativeName)
                 }
             }
 

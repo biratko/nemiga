@@ -9,6 +9,7 @@ import {addImplicitDirs} from '../implicitDirs.js'
 import {run7z, run7zCapture} from './7z-utils.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
+import {buildExtractPlan} from '../pathUtils.js'
 
 interface ParsedEntry {
     name: string
@@ -126,20 +127,7 @@ export class SevenZipAdapter implements CreatableAdapter {
     async extract(archivePath: string, innerPaths: string[], destDir: string, options: ExtractOptions): Promise<{filesDone: number; bytesWritten: number}> {
         // Build list of entries to extract (expand directories)
         const allEntries = await this.listEntries(archivePath)
-        const toExtract: Array<{archiveName: string; relativeName: string; type: string; size: number}> = []
-
-        for (const innerPath of innerPaths) {
-            for (const entry of allEntries) {
-                if (entry.name === innerPath) {
-                    const baseName = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    toExtract.push({archiveName: entry.name, relativeName: baseName, type: entry.type, size: entry.size})
-                } else if (entry.name.startsWith(innerPath + '/')) {
-                    const parentDir = innerPath.includes('/') ? innerPath.split('/').pop()! : innerPath
-                    const relative = parentDir + entry.name.slice(innerPath.length)
-                    toExtract.push({archiveName: entry.name, relativeName: relative, type: entry.type, size: entry.size})
-                }
-            }
-        }
+        const toExtract = buildExtractPlan(allEntries, innerPaths)
 
         if (toExtract.length === 0 || options.cancelled()) {
             return {filesDone: 0, bytesWritten: 0}
