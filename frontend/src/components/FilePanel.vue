@@ -283,6 +283,7 @@ onBeforeUnmount(() => {
     @dragleave="onDragLeavePanel"
     @drop="handleDrop($event, null)"
   >
+    <slot name="before-header" />
     <div class="panel-header">
       <span class="path">{{ currentPath }}</span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
@@ -292,7 +293,6 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <slot name="after-header" />
     <div class="panel-content" ref="panelContentRef">
       <table class="file-table">
         <thead>
@@ -397,9 +397,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 8px;
+  padding: 1px 8px;
   background: var(--bg-header);
   border-bottom: 1px solid var(--border);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
 }

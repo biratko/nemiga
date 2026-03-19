@@ -185,7 +185,7 @@ defineExpose({
             @drop="onDrop"
             @extract="onExtract"
         >
-            <template #after-header>
+            <template #before-header>
                 <TabBar
                     :tabs="tabs"
                     :active-tab-index="activeTabIndex"
