@@ -16,7 +16,7 @@ const highlightIndex = ref(0)
 const currentDrive = computed(() => {
     const fsPath = props.currentPath.split('::')[0]
     let best: DriveEntry | null = null
-    let bestLen = 0
+    let bestLen = -1
     for (const d of drives.value) {
         const dp = d.path.endsWith('/') ? d.path.slice(0, -1) : d.path
         if (

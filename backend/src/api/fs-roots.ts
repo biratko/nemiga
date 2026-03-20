@@ -109,7 +109,7 @@ function filterByPathGuard(roots: DriveEntry[], pathGuard: PathGuard): DriveEntr
         return allowed.some(
             (allowedRoot) =>
                 resolved === allowedRoot ||
-                allowedRoot.startsWith(resolved + path.sep) ||
+                allowedRoot.startsWith(resolved === '/' ? '/' : resolved + path.sep) ||
                 resolved.startsWith(allowedRoot + path.sep),
         )
     })
