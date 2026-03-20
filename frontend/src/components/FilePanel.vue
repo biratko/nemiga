@@ -348,6 +348,7 @@ onBeforeUnmount(() => {
               directory: entry.type === 'directory',
               archive: entry.isArchive,
               symlink: entry.type === 'symlink',
+              hidden: entry.hidden,
               'drop-target': dropTargetPanelId === panelId && dropTargetEntry !== null && dropTargetEntry !== 'parent' && (dropTargetEntry as any).name === entry.name,
             }"
             :draggable="true"
@@ -530,6 +531,10 @@ onBeforeUnmount(() => {
 
 .entry.archive .col-name {
   color: var(--text-archive);
+}
+
+.entry.hidden {
+  opacity: 0.5;
 }
 
 .entry.selected {
