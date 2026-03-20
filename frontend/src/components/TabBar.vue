@@ -4,6 +4,7 @@ import type {TabState} from '@/types/tabs'
 import type {TabMode} from '@/types/tabs'
 import TabContextMenu from './TabContextMenu.vue'
 import {useTabDragReorder} from '@/composables/useTabDragReorder'
+import {getUiZoom} from '@/utils/zoom'
 
 const props = defineProps<{
     tabs: TabState[]
@@ -30,7 +31,8 @@ function tabLabel(tab: TabState): string {
 
 function onContextMenu(e: MouseEvent, index: number) {
     e.preventDefault()
-    ctxMenu.value = {x: e.clientX, y: e.clientY, tabIndex: index}
+    const zoom = getUiZoom()
+    ctxMenu.value = {x: e.clientX / zoom, y: e.clientY / zoom, tabIndex: index}
 }
 
 function onSetMode(mode: TabMode) {

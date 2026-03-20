@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 import type { FSEntry } from '@/types/fs'
+import { getUiZoom } from '@/utils/zoom'
 
 export interface ContextMenuState {
   visible: boolean
@@ -38,10 +39,11 @@ export function useContextMenu(
       contextMenuSuppressed.value = true
       // Undo the selection toggle that rightMouseDown already performed
       undoSelection()
+      const zoom = getUiZoom()
       menuState.value = {
         visible: true,
-        x: event.clientX,
-        y: event.clientY,
+        x: event.clientX / zoom,
+        y: event.clientY / zoom,
         entry: longPressEntry!,
       }
       longPressEntry = null
