@@ -9,6 +9,7 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import ContextMenu from '@/components/ContextMenu.vue'
+import DriveSelector from '@/components/DriveSelector.vue'
 import FileIcon from '@/components/FileIcon.vue'
 import { formatSize, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
@@ -299,6 +300,7 @@ onBeforeUnmount(() => {
   >
     <slot name="before-header" />
     <div class="panel-header">
+      <DriveSelector :currentPath="currentPath" @navigate="loadDirectory" />
       <span class="path">{{ currentPath }}</span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
