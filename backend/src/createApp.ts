@@ -1,5 +1,6 @@
 import http from 'node:http'
-import {createServer} from './server.js'
+import {createExpressApp} from './server.js'
+import {fsRouter, workspaceRouter, settingsRouter, apiErrorHandler} from './api/router.js'
 import {LocalProvider} from './providers/LocalProvider.js'
 import {ProviderRouter} from './providers/ProviderRouter.js'
 import {PathGuard} from './providers/pathGuard.js'
@@ -36,9 +37,15 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const settingsService = new SettingsService(storage)
     const wsServer = new WsServer(router, settingsService)
 
-    const app = createServer(router, workspaceService, settingsService, pathGuard, {
+    const apiRouters = [
+        fsRouter(router, settingsService, pathGuard),
+        workspaceRouter(workspaceService),
+        settingsRouter(settingsService),
+    ]
+    const app = createExpressApp(apiRouters, apiErrorHandler, {
         frontendDist: options.frontendDist,
     })
+
     const server = http.createServer(app)
     wsServer.attach(server)
 
