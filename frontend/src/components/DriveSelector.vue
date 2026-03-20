@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useDriveList } from '@/composables/useDriveList'
 import type { DriveEntry } from '@/types/fs'
 import driveIconRaw from '@/assets/icons/drive.svg?raw'
+import { getUiZoom } from '@/utils/zoom'
 
 const props = defineProps<{ currentPath: string }>()
 const emit = defineEmits<{ navigate: [path: string] }>()
@@ -37,7 +38,8 @@ function toggle() {
     } else {
         const rect = wrapperEl.value?.getBoundingClientRect()
         if (rect) {
-            dropdownStyle.value = { top: `${rect.bottom}px`, left: `${rect.left}px` }
+            const zoom = getUiZoom()
+            dropdownStyle.value = { top: `${rect.bottom / zoom}px`, left: `${rect.left / zoom}px` }
         }
         isOpen.value = true
         highlightIndex.value = drives.value.findIndex(
