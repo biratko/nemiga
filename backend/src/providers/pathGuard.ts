@@ -11,6 +11,10 @@ export class PathGuard {
         return this.roots !== null
     }
 
+    get allowedRoots(): string[] | null {
+        return this.roots ? [...this.roots] : null
+    }
+
     assert(targetPath: string): void {
         if (!this.roots) return
 
