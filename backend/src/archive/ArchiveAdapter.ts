@@ -1,4 +1,4 @@
-import type {FSEntry} from '../protocol/fs-types.js'
+import type {FSEntry} from '../protocol'
 
 export interface ExtractProgress {
     currentFile: string

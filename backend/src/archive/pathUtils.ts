@@ -1,6 +1,33 @@
+import crypto from 'node:crypto'
+
 /** Remove leading and trailing slashes from a path segment. */
 export function stripSlashes(p: string): string {
     return p.replace(/^\/+|\/+$/g, '')
+}
+
+/** Strip trailing slashes from an archive entry name. */
+export function stripTrailingSlashes(name: string): string {
+    return name.replace(/\/+$/, '')
+}
+
+/** Extract the last path segment (basename) from an archive entry name. */
+export function entryBaseName(name: string): string {
+    return name.substring(name.lastIndexOf('/') + 1)
+}
+
+/** Extract file extension from a basename, or null if none. */
+export function entryExtension(baseName: string): string | null {
+    return baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
+}
+
+/** Check if an entry name represents a hidden file (starts with dot). */
+export function isHiddenEntry(name: string): boolean {
+    return entryBaseName(name).startsWith('.')
+}
+
+/** Generate a temporary file path for archive rewrite operations. */
+export function makeTmpPath(archivePath: string): string {
+    return archivePath + '.tacom-tmp-' + crypto.randomUUID()
 }
 
 export interface ExtractItem {
@@ -25,17 +52,11 @@ export function buildExtractPlan(
     for (const entry of allEntries) {
         for (const innerPath of innerPaths) {
             if (entry.name === innerPath) {
-                const baseName = innerPath.includes('/')
-                    ? innerPath.substring(innerPath.lastIndexOf('/') + 1)
-                    : innerPath
-                result.push({archiveName: entry.name, relativeName: baseName, type: entry.type, size: entry.size})
+                result.push({archiveName: entry.name, relativeName: entryBaseName(innerPath), type: entry.type, size: entry.size})
                 break
             }
             if (entry.name.startsWith(innerPath + '/')) {
-                const parentDir = innerPath.includes('/')
-                    ? innerPath.substring(innerPath.lastIndexOf('/') + 1)
-                    : innerPath
-                const relative = parentDir + entry.name.slice(innerPath.length)
+                const relative = entryBaseName(innerPath) + entry.name.slice(innerPath.length)
                 result.push({archiveName: entry.name, relativeName: relative, type: entry.type, size: entry.size})
                 break
             }

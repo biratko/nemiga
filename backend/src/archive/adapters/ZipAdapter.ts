@@ -10,7 +10,7 @@ import {createWith7z} from './createWith7z.js'
 import {addImplicitDirs} from '../implicitDirs.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
-import {buildExtractPlan} from '../pathUtils.js'
+import {entryBaseName, entryExtension, buildExtractPlan} from '../pathUtils.js'
 
 function decodeDosDateTime(date: number, time: number): Date {
     const day = date & 0x1f
@@ -47,15 +47,14 @@ export class ZipAdapter implements CreatableAdapter {
                         symlink_target: null,
                     })
                 } else {
-                    const baseName = fileName.includes('/') ? fileName.substring(fileName.lastIndexOf('/') + 1) : fileName
-                    const ext = baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
+                    const baseName = entryBaseName(fileName)
                     entries.push({
                         name: fileName,
                         type: 'file',
                         size: entry.uncompressedSize,
                         modified: decodeDosDateTime(entry.lastModDate, (entry as any).lastModTime).toISOString(),
                         permissions: '-rw-r--r--',
-                        extension: ext,
+                        extension: entryExtension(baseName),
                         hidden: baseName.startsWith('.'),
                         symlink_target: null,
                     })

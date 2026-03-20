@@ -9,7 +9,7 @@ import {addImplicitDirs} from '../implicitDirs.js'
 import {run7z, run7zCapture} from './7z-utils.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
-import {buildExtractPlan} from '../pathUtils.js'
+import {stripTrailingSlashes, entryBaseName, entryExtension, isHiddenEntry, buildExtractPlan} from '../pathUtils.js'
 
 interface ParsedEntry {
     name: string
@@ -40,7 +40,7 @@ function parse7zList(output: string): ParsedEntry[] {
 
         const [, date, time, attr, sizeStr, name] = match
         const isDir = attr.includes('D')
-        const cleanName = name.replace(/\\/g, '/').replace(/\/+$/, '')
+        const cleanName = stripTrailingSlashes(name.replace(/\\/g, '/'))
         if (!cleanName) continue
 
         entries.push({
@@ -79,7 +79,7 @@ export class SevenZipAdapter implements CreatableAdapter {
             const name = fields.get('Path')
             if (!name || name === archivePath) continue
 
-            const cleanName = name.replace(/\\/g, '/').replace(/\/+$/, '')
+            const cleanName = stripTrailingSlashes(name.replace(/\\/g, '/'))
             if (!cleanName) continue
 
             const attr = fields.get('Attributes') ?? ''
@@ -98,20 +98,19 @@ export class SevenZipAdapter implements CreatableAdapter {
                         modified,
                         permissions: 'drwxr-xr-x',
                         extension: null,
-                        hidden: cleanName.substring(cleanName.lastIndexOf('/') + 1).startsWith('.'),
+                        hidden: isHiddenEntry(cleanName),
                         symlink_target: null,
                     })
                 }
             } else {
-                const baseName = cleanName.substring(cleanName.lastIndexOf('/') + 1)
-                const ext = baseName.includes('.') ? baseName.substring(baseName.lastIndexOf('.') + 1) : null
+                const baseName = entryBaseName(cleanName)
                 entries.push({
                     name: cleanName,
                     type: 'file',
                     size,
                     modified,
                     permissions: '-rw-r--r--',
-                    extension: ext,
+                    extension: entryExtension(baseName),
                     hidden: baseName.startsWith('.'),
                     symlink_target: null,
                 })
