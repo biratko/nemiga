@@ -12,6 +12,7 @@ const isOpen = ref(false)
 const wrapperEl = ref<HTMLElement | null>(null)
 const menuEl = ref<HTMLElement | null>(null)
 const highlightIndex = ref(0)
+const dropdownStyle = ref({ top: '0px', left: '0px' })
 
 const currentDrive = computed(() => {
     const fsPath = props.currentPath.split('::')[0]
@@ -34,6 +35,10 @@ function toggle() {
     if (isOpen.value) {
         isOpen.value = false
     } else {
+        const rect = wrapperEl.value?.getBoundingClientRect()
+        if (rect) {
+            dropdownStyle.value = { top: `${rect.bottom}px`, left: `${rect.left}px` }
+        }
         isOpen.value = true
         highlightIndex.value = drives.value.findIndex(
             (d) => d.path === currentDrive.value?.path,
@@ -97,6 +102,7 @@ onBeforeUnmount(() => {
             v-if="isOpen"
             ref="menuEl"
             class="drive-dropdown"
+            :style="dropdownStyle"
             tabindex="-1"
             @keydown="onKeydown"
         >
@@ -169,9 +175,7 @@ onBeforeUnmount(() => {
 }
 
 .drive-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
+    position: fixed;
     z-index: 1000;
     min-width: 140px;
     max-height: 300px;
