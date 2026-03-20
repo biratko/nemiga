@@ -35,6 +35,8 @@ const tabs: {id: TabId; icon: string; label: string}[] = [
 
 const theme = ref(currentTheme.value)
 const originalTheme = ref(currentTheme.value)
+const zoom = ref(parseFloat(document.documentElement.style.zoom) || 1)
+const originalZoom = ref(zoom.value)
 const bindings = ref<KeyBindings>({
     cursorUp: 'ArrowUp',
     cursorDown: 'ArrowDown',
@@ -67,6 +69,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 
 function cancel() {
     applyTheme(originalTheme.value)
+    document.documentElement.style.zoom = String(originalZoom.value)
     emit('close')
 }
 
@@ -82,6 +85,8 @@ async function save() {
         fileTypes: fileTypes.value,
     }
     localStorage.setItem('tacom-theme', theme.value)
+    localStorage.setItem('tacom-zoom', String(zoom.value))
+    document.documentElement.style.zoom = String(zoom.value)
     await saveSettings(state)
     emit('close', state)
 }
@@ -108,7 +113,9 @@ async function save() {
                         <SettingsAppearance
                             v-if="activeTab === 'appearance'"
                             :theme="theme"
+                            :zoom="zoom"
                             @update:theme="theme = $event"
+                            @update:zoom="zoom = $event"
                         />
                         <SettingsKeyBindings
                             v-if="activeTab === 'keybindings'"

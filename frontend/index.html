@@ -13,6 +13,8 @@
         var theme = localStorage.getItem('tacom-theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
         if (bgMap[theme]) document.documentElement.style.backgroundColor = bgMap[theme];
+        var zoom = localStorage.getItem('tacom-zoom');
+        if (zoom) document.documentElement.style.zoom = zoom;
       })();
     </script>
     <div id="app"></div>

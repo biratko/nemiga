@@ -2,12 +2,16 @@
 import {useTheme} from '@/composables/useTheme'
 import {themeNames, themes} from '@/themes'
 
+const ZOOM_OPTIONS = [0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3]
+
 const props = defineProps<{
     theme: string
+    zoom: number
 }>()
 
 const emit = defineEmits<{
     'update:theme': [value: string]
+    'update:zoom': [value: number]
 }>()
 
 const {applyTheme} = useTheme()
@@ -16,6 +20,12 @@ function onThemeChange(e: Event) {
     const value = (e.target as HTMLSelectElement).value
     applyTheme(value)
     emit('update:theme', value)
+}
+
+function onZoomChange(e: Event) {
+    const value = parseFloat((e.target as HTMLSelectElement).value)
+    document.documentElement.style.zoom = String(value)
+    emit('update:zoom', value)
 }
 </script>
 
@@ -26,6 +36,15 @@ function onThemeChange(e: Event) {
             <label class="field-label">Theme</label>
             <select :value="theme" @change="onThemeChange" class="field-select">
                 <option v-for="t in themeNames" :key="t" :value="t">{{ themes[t].label }}</option>
+            </select>
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title">UI Scale</div>
+        <div class="field-row">
+            <label class="field-label">Zoom</label>
+            <select :value="zoom" @change="onZoomChange" class="field-select">
+                <option v-for="z in ZOOM_OPTIONS" :key="z" :value="z">{{ Math.round(z * 100) }}%</option>
             </select>
         </div>
     </div>
