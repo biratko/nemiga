@@ -13,6 +13,8 @@ export type {
     DeleteResult,
     MkdirResult,
     ListResult,
+    DriveEntry,
+    RootsResult,
 } from './fs-types.js'
 
 export type {

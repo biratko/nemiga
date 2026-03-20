@@ -64,3 +64,12 @@ export type RenameResult =
 export type ListResult =
     | {ok: true; path: string; entries: FSEntry[]}
     | {ok: false; error: ErrorInfo}
+
+export interface DriveEntry {
+    name: string
+    path: string
+}
+
+export type RootsResult =
+    | { ok: true; roots: DriveEntry[] }
+    | { ok: false; error: ErrorInfo }

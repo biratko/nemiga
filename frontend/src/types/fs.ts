@@ -19,3 +19,8 @@ export interface ListResponse {
     message: string
   }
 }
+
+export interface DriveEntry {
+    name: string
+    path: string
+}
