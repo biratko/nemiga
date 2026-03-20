@@ -1,4 +1,5 @@
 import * as yauzl from 'yauzl-promise'
+import yazl from 'yazl'
 import fsp from 'node:fs/promises'
 import {createWriteStream} from 'node:fs'
 import path from 'node:path'
@@ -6,11 +7,9 @@ import {pipeline} from 'node:stream/promises'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
 import type {CreatableAdapter, PackOptions} from '../CreatableAdapter.js'
-import {createWith7z} from './createWith7z.js'
 import {addImplicitDirs} from '../implicitDirs.js'
-import {addWith7z} from './addWith7z.js'
-import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
-import {entryBaseName, entryExtension, buildExtractPlan} from '../pathUtils.js'
+import {entryBaseName, entryExtension, buildExtractPlan, stripSlashes, makeTmpPath} from '../pathUtils.js'
+import {collectFiles} from './7z-fs-utils.js'
 
 function decodeDosDateTime(date: number, time: number): Date {
     const day = date & 0x1f
@@ -147,18 +146,170 @@ export class ZipAdapter implements CreatableAdapter {
     }
 
     async add(archivePath: string, innerDestPath: string, sourcePaths: string[], options: ExtractOptions): Promise<{filesDone: number; bytesWritten: number}> {
-        return addWith7z(archivePath, innerDestPath, sourcePaths, options)
+        const newZip = new yazl.ZipFile()
+
+        // Copy existing entries
+        await copyZipEntries(archivePath, newZip)
+
+        // Add new files
+        let filesDone = 0
+        let bytesWritten = 0
+        const prefix = innerDestPath ? innerDestPath + '/' : ''
+
+        for (const src of sourcePaths) {
+            if (options.cancelled()) break
+            const baseName = path.basename(src)
+            const stat = await fsp.stat(src)
+
+            if (stat.isDirectory()) {
+                const files = await collectFiles(src)
+                for (const f of files) {
+                    if (options.cancelled()) break
+                    const entryName = prefix + f.relativePath.replace(/\\/g, '/')
+                    const absPath = path.join(path.dirname(src), f.relativePath)
+                    newZip.addFile(absPath, entryName)
+                    filesDone++
+                    bytesWritten += f.size
+                    options.onProgress({currentFile: entryName, filesDone, bytesWritten})
+                }
+            } else {
+                const entryName = prefix + baseName
+                newZip.addFile(src, entryName)
+                filesDone++
+                bytesWritten += stat.size
+                options.onProgress({currentFile: entryName, filesDone, bytesWritten})
+            }
+        }
+
+        newZip.end()
+        const tmpPath = makeTmpPath(archivePath)
+        await pipeline(newZip.outputStream, createWriteStream(tmpPath))
+        await fsp.rename(tmpPath, archivePath)
+
+        return {filesDone, bytesWritten}
     }
 
     async create(archivePath: string, sourcePaths: string[], options: PackOptions): Promise<{filesDone: number; bytesWritten: number; skipped: number}> {
-        return createWith7z(archivePath, sourcePaths, options)
+        // Collect all files for progress tracking
+        const allFiles: {absolutePath: string; archiveName: string; size: number}[] = []
+        for (const src of sourcePaths) {
+            const files = await collectFiles(src)
+            for (const f of files) {
+                allFiles.push({
+                    absolutePath: path.join(path.dirname(src), f.relativePath),
+                    archiveName: f.relativePath,
+                    size: f.size,
+                })
+            }
+        }
+
+        if (options.cancelled()) return {filesDone: 0, bytesWritten: 0, skipped: 0}
+
+        const zipfile = new yazl.ZipFile()
+        let filesDone = 0
+        let bytesWritten = 0
+
+        for (const file of allFiles) {
+            if (options.cancelled()) break
+            // Use forward slashes for zip entry names
+            const entryName = file.archiveName.replace(/\\/g, '/')
+            zipfile.addFile(file.absolutePath, entryName)
+            filesDone++
+            bytesWritten += file.size
+            options.onProgress({currentFile: entryName, filesDone, bytesWritten})
+        }
+
+        zipfile.end()
+
+        await pipeline(zipfile.outputStream, createWriteStream(archivePath))
+
+        if (options.cancelled()) {
+            await fsp.rm(archivePath, {force: true}).catch(() => {})
+        }
+
+        return {filesDone, bytesWritten, skipped: 0}
     }
 
     async deleteEntries(archivePath: string, innerPaths: string[]): Promise<{deleted: number}> {
-        return deleteWith7z(archivePath, innerPaths)
+        // Build set of paths to delete (including children of directories)
+        const deleteSet = new Set<string>()
+        for (const p of innerPaths) {
+            deleteSet.add(p)
+            deleteSet.add(p + '/') // directory entry variant
+        }
+
+        const newZip = new yazl.ZipFile()
+        const zip = await yauzl.open(archivePath)
+        let deleted = 0
+
+        try {
+            for await (const entry of zip) {
+                const name: string = entry.filename
+                const cleanName = name.endsWith('/') ? name.slice(0, -1) : name
+
+                // Skip if this entry or any parent is in the delete set
+                if (deleteSet.has(cleanName) || deleteSet.has(name) ||
+                    innerPaths.some(p => cleanName.startsWith(p + '/'))) {
+                    deleted++
+                    continue
+                }
+
+                if (name.endsWith('/')) {
+                    newZip.addEmptyDirectory(name)
+                } else {
+                    const buf = await readEntryBuffer(entry)
+                    newZip.addBuffer(buf, name)
+                }
+            }
+        } finally {
+            await zip.close()
+        }
+
+        newZip.end()
+        const tmpPath = makeTmpPath(archivePath)
+        await pipeline(newZip.outputStream, createWriteStream(tmpPath))
+        await fsp.rename(tmpPath, archivePath)
+
+        return {deleted}
     }
 
     async mkdirEntry(archivePath: string, innerPath: string): Promise<void> {
-        return mkdirWith7z(archivePath, innerPath)
+        const dirEntry = stripSlashes(innerPath) + '/'
+
+        const newZip = new yazl.ZipFile()
+        await copyZipEntries(archivePath, newZip)
+        newZip.addEmptyDirectory(dirEntry)
+        newZip.end()
+
+        const tmpPath = makeTmpPath(archivePath)
+        await pipeline(newZip.outputStream, createWriteStream(tmpPath))
+        await fsp.rename(tmpPath, archivePath)
+    }
+}
+
+/** Read a yauzl entry fully into a buffer. */
+async function readEntryBuffer(entry: yauzl.Entry): Promise<Buffer> {
+    const stream = await entry.openReadStream()
+    const chunks: Buffer[] = []
+    for await (const chunk of stream) {
+        chunks.push(chunk as Buffer)
+    }
+    return Buffer.concat(chunks)
+}
+
+/** Copy all entries from an existing zip into a new yazl ZipFile. */
+async function copyZipEntries(archivePath: string, newZip: yazl.ZipFile): Promise<void> {
+    const zip = await yauzl.open(archivePath)
+    try {
+        for await (const entry of zip) {
+            if (entry.filename.endsWith('/')) {
+                newZip.addEmptyDirectory(entry.filename)
+            } else {
+                const buf = await readEntryBuffer(entry)
+                newZip.addBuffer(buf, entry.filename)
+            }
+        }
+    } finally {
+        await zip.close()
     }
 }

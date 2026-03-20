@@ -6,10 +6,16 @@ export function toPosix(nativePath: string): string {
     return nativePath.replace(/\\/g, '/')
 }
 
-/** Convert POSIX path from frontend to native OS path */
+/** Convert POSIX path from frontend to native OS path.
+ *  Only converts the filesystem part — archive inner paths (after ::) stay with forward slashes. */
 export function fromPosix(posixPath: string): string {
     if (path.sep === '/') return posixPath
-    return posixPath.replace(/\//g, '\\')
+    const sepIdx = posixPath.indexOf('::')
+    if (sepIdx === -1) {
+        return posixPath.replace(/\//g, '\\')
+    }
+    const fsPart = posixPath.slice(0, sepIdx).replace(/\//g, '\\')
+    return fsPart + posixPath.slice(sepIdx)
 }
 
 /**

@@ -16,7 +16,8 @@
     "unbzip2-stream": "^1.4.3",
     "which": "^6.0.1",
     "ws": "^8.19.0",
-    "yauzl-promise": "^4.0.0"
+    "yauzl-promise": "^4.0.0",
+    "yazl": "^3.3.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
@@ -25,6 +26,7 @@
     "@types/which": "^3.0.4",
     "@types/ws": "^8.18.1",
     "@types/yauzl-promise": "^4.0.1",
+    "@types/yazl": "^3.3.0",
     "tsx": "^4.19.0",
     "typescript": "~5.7.0"
   }
