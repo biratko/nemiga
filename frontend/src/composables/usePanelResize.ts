@@ -1,4 +1,4 @@
-import {ref, onMounted, onUnmounted} from 'vue'
+import {ref, nextTick, onMounted, onUnmounted} from 'vue'
 import {getUiZoom} from '@/utils/zoom'
 
 const STORAGE_KEY = 'panel-split-percent'
@@ -15,6 +15,7 @@ export function usePanelResize() {
     const tooltipY = ref(0)
 
     let containerEl: HTMLElement | null = null
+    let inputRef: HTMLInputElement | null = null
 
     function load() {
         const saved = localStorage.getItem(STORAGE_KEY)
@@ -77,7 +78,10 @@ export function usePanelResize() {
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
         showInput.value = true
-        inputValue.value = String(Math.round(splitPercent.value))
+        inputValue.value = splitPercent.value.toFixed(1)
+        nextTick(() => {
+            setTimeout(() => { inputRef?.focus(); inputRef?.select() }, 0)
+        })
     }
 
     function applyInput() {
@@ -98,10 +102,7 @@ export function usePanelResize() {
     }
 
     function setInputRef(el: HTMLInputElement | null) {
-        if (el) {
-            el.focus()
-            el.select()
-        }
+        inputRef = el
     }
 
     onMounted(() => {

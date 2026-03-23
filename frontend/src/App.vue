@@ -457,7 +457,7 @@ onUnmounted(() => {
                     v-if="isDragging"
                     class="splitter-tooltip"
                     :style="{ left: tooltipX + 12 + 'px', top: tooltipY - 10 + 'px' }"
-                >{{ Math.round(splitPercent) }}%</div>
+                >{{ splitPercent.toFixed(1) }}%</div>
                 <TabPanel
                     ref="rightPanel"
                     panel-id="right"
