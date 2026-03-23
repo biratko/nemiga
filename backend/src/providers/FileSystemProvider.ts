@@ -48,4 +48,6 @@ export interface FileSystemProvider {
     delete(paths: string[], ctx: DeleteContext): Promise<DeleteResult>
     mkdir(dirPath: string): Promise<MkdirResult>
     rename(filePath: string, newName: string): Promise<RenameResult>
+    createReadStream?(filePath: string): Promise<import('node:stream').Readable>
+    createWriteStream?(filePath: string): Promise<import('node:stream').Writable>
 }

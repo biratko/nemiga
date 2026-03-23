@@ -263,6 +263,16 @@ export class LocalProvider implements FileSystemProvider {
         return {ok: true, deleted}
     }
 
+    async createReadStream(filePath: string): Promise<import('node:stream').Readable> {
+        const {createReadStream} = await import('node:fs')
+        return createReadStream(filePath)
+    }
+
+    async createWriteStream(filePath: string): Promise<import('node:stream').Writable> {
+        const {createWriteStream} = await import('node:fs')
+        return createWriteStream(filePath)
+    }
+
     async rename(filePath: string, newName: string): Promise<RenameResult> {
         if (!newName || newName === '.' || newName === '..') {
             return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Invalid file name'}}
