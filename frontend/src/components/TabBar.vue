@@ -122,11 +122,6 @@ function onCtxCloseOthers() {
                     <path d="M12 2v8m-4-4 4 4 4-4M5 14h14l-1 8H6z"/>
                 </svg>
                 <span class="tab-label">{{ tabLabel(tab) }}</span>
-                <span
-                    v-if="tabs.length > 1"
-                    class="tab-close"
-                    @click.stop="emit('close', i)"
-                >&times;</span>
             </div>
         </div>
         <button v-if="showRightArrow" class="tab-scroll-btn right" @click="scrollRight">&#9654;</button>
@@ -244,20 +239,4 @@ function onCtxCloseOthers() {
     text-overflow: ellipsis;
 }
 
-.tab-close {
-    flex-shrink: 0;
-    width: 14px;
-    height: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 2px;
-    font-size: 14px;
-    line-height: 1;
-}
-
-.tab-close:hover {
-    background: var(--bg-row-hover);
-    color: var(--text-primary);
-}
 </style>
