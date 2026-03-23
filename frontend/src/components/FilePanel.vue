@@ -425,7 +425,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   padding: 1px 8px;
-  background: var(--bg-header);
+  background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   font-size: 12px;
   white-space: nowrap;

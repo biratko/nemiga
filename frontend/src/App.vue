@@ -14,6 +14,7 @@ import type {PanelSort, PanelState} from '@/types/workspace'
 import type {TabState, PanelTabsState} from '@/types/tabs'
 import {loadSettings} from '@/api/settings'
 import {useFileOperations, type CopyOp, type MoveOp} from '@/composables/useFileOperations'
+import {usePanelResize} from '@/composables/usePanelResize'
 import {useTheme} from '@/composables/useTheme'
 import {joinPath} from '@/utils/path'
 
@@ -25,6 +26,18 @@ interface TabPanelAPI extends PanelAPI {
 const leftPanel = ref<TabPanelAPI>()
 const rightPanel = ref<TabPanelAPI>()
 const activePanel = ref<'left' | 'right'>('left')
+const panelsRef = ref<HTMLElement>()
+
+const {
+    splitPercent, isDragging, showInput, inputValue,
+    tooltipX, tooltipY,
+    onMouseDown: onSplitterMouseDown,
+    onDblClick: onSplitterDblClick,
+    applyInput: applySplitInput,
+    cancelInput: cancelSplitInput,
+    setContainer: setSplitContainer,
+    setInputRef: setSplitInputRef,
+} = usePanelResize()
 
 const keyBindings = ref<KeyBindings>({
     cursorUp: 'ArrowUp',
@@ -269,7 +282,7 @@ function handleMousedown(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value) return
+    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || showInput.value) return
 
     const b = keyBindings.value
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
@@ -379,6 +392,7 @@ onMounted(async () => {
     }
     window.addEventListener('keydown', handleKeydown)
     window.addEventListener('mousedown', handleMousedown)
+    if (panelsRef.value) setSplitContainer(panelsRef.value)
 })
 
 onUnmounted(() => {
@@ -405,7 +419,7 @@ onUnmounted(() => {
                 Settings
             </button>
         </div>
-        <div class="panels">
+        <div class="panels" ref="panelsRef">
             <template v-if="panelState !== null">
                 <TabPanel
                     ref="leftPanel"
@@ -413,6 +427,7 @@ onUnmounted(() => {
                     :tabs-state="panelState.left"
                     :is-active="activePanel === 'left'"
                     :show-hidden="currentSettings.showHidden ?? false"
+                    :style="{ flex: '0 0 ' + splitPercent + '%' }"
                     @tabs-change="state => onTabsChange('left', state)"
                     @navigate="path => onNavigate('left', path)"
                     @sort-change="sort => onSortChange('left', sort)"
@@ -420,6 +435,29 @@ onUnmounted(() => {
                     @extract="startExtract"
                     @pack="startPack"
                 />
+                <div
+                    class="panel-splitter"
+                    :class="{ dragging: isDragging }"
+                    @mousedown="onSplitterMouseDown"
+                    @dblclick="onSplitterDblClick"
+                >
+                    <div v-if="showInput" class="splitter-input-wrap" @click.stop @mousedown.stop>
+                        <input
+                            :ref="(el: any) => setSplitInputRef(el as HTMLInputElement)"
+                            class="splitter-input"
+                            v-model="inputValue"
+                            @keydown.stop
+                            @keydown.enter="applySplitInput"
+                            @keydown.escape="cancelSplitInput"
+                            @blur="cancelSplitInput"
+                        />
+                    </div>
+                </div>
+                <div
+                    v-if="isDragging"
+                    class="splitter-tooltip"
+                    :style="{ left: tooltipX + 12 + 'px', top: tooltipY - 10 + 'px' }"
+                >{{ Math.round(splitPercent) }}%</div>
                 <TabPanel
                     ref="rightPanel"
                     panel-id="right"
@@ -534,7 +572,54 @@ onUnmounted(() => {
     display: flex;
     flex: 1;
     min-height: 0;
-    gap: 2px;
+    position: relative;
+}
+
+.panel-splitter {
+    flex-shrink: 0;
+    width: 4px;
+    cursor: col-resize;
+    background: var(--border);
+    position: relative;
+    z-index: 10;
+}
+
+.panel-splitter:hover,
+.panel-splitter.dragging {
+    background: var(--accent);
+}
+
+.splitter-tooltip {
+    position: fixed;
+    z-index: 1000;
+    padding: 2px 6px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--text-primary);
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.splitter-input-wrap {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1001;
+}
+
+.splitter-input {
+    width: 48px;
+    padding: 2px 4px;
+    font-size: 11px;
+    text-align: center;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    outline: none;
 }
 
 .toolbar {
