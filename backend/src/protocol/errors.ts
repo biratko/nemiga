@@ -11,6 +11,9 @@ export const ErrorCode = {
 
     // Internal
     INTERNAL: 'INTERNAL',
+
+    // Session
+    SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
