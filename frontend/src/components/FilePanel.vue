@@ -269,6 +269,15 @@ function copyPath() {
   navigator.clipboard.writeText(currentPath.value)
 }
 
+const pathSegments = computed(() => {
+  const full = currentPath.value
+  const parts = full.split('/').filter(Boolean)
+  return parts.map((name, i) => ({
+    name,
+    path: '/' + parts.slice(0, i + 1).join('/'),
+  }))
+})
+
 defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent })
 
 function onDocumentMouseUp(e: MouseEvent) {
@@ -301,7 +310,7 @@ onBeforeUnmount(() => {
     <slot name="before-header" />
     <div class="panel-header">
       <DriveSelector :currentPath="currentPath" @navigate="loadDirectory" />
-      <span class="path">{{ currentPath }}</span>
+      <span class="path"><span class="path-sep">/</span><template v-for="(seg, i) in pathSegments" :key="seg.path"><span class="path-segment" @click.stop="loadDirectory(seg.path)">{{ seg.name }}</span><span v-if="i < pathSegments.length - 1" class="path-sep">/</span></template></span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -430,7 +439,20 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
 }
 
+.path-segment {
+  cursor: pointer;
+}
+
+.path-segment:hover {
+  text-decoration: underline;
+}
+
+.path-sep {
+  opacity: 0.5;
+}
+
 .copy-path-btn {
+  margin-left: auto;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
