@@ -17,6 +17,7 @@ import {loadSettings} from '@/api/settings'
 import {useFileOperations, type CopyOp, type MoveOp} from '@/composables/useFileOperations'
 import {usePanelResize} from '@/composables/usePanelResize'
 import {useTheme} from '@/composables/useTheme'
+import {useNotifyWs} from '@/composables/useNotifyWs'
 import {joinPath} from '@/utils/path'
 
 interface TabPanelAPI extends PanelAPI {
@@ -39,6 +40,24 @@ const {
     setContainer: setSplitContainer,
     setInputRef: setSplitInputRef,
 } = usePanelResize()
+
+const {on: onNotify} = useNotifyWs()
+onNotify('ftp-session-renewed', (data: any) => {
+    const {oldSessionId, newSessionId} = data ?? {}
+    if (!oldSessionId || !newSessionId || !panelState.value) return
+    const prefix = `ftp://${oldSessionId}`
+    const newPrefix = `ftp://${newSessionId}`
+    for (const side of ['left', 'right'] as const) {
+        panelState.value![side].tabs = panelState.value![side].tabs.map(tab => ({
+            ...tab,
+            path: tab.path.startsWith(prefix) ? newPrefix + tab.path.slice(prefix.length) : tab.path,
+        }))
+    }
+    const lPath = leftPanel.value?.currentPath
+    if (lPath?.startsWith(prefix)) leftPanel.value?.loadDirectory(newPrefix + lPath.slice(prefix.length))
+    const rPath = rightPanel.value?.currentPath
+    if (rPath?.startsWith(prefix)) rightPanel.value?.loadDirectory(newPrefix + rPath.slice(prefix.length))
+})
 
 const keyBindings = ref<KeyBindings>({
     cursorUp: 'ArrowUp',
