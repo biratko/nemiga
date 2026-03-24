@@ -3,11 +3,16 @@ import {isArchivePath, archiveRealPath} from '../archive/ArchiveProvider.js'
 import type {ArchiveProvider} from '../archive/ArchiveProvider.js'
 import type {PathGuard} from './pathGuard.js'
 import type {FtpSessionManager} from '../ftp/FtpSessionManager.js'
+import type {FtpArchiveProvider} from '../ftp/FtpArchiveProvider.js'
 import {CrossProviderTransfer} from '../ftp/CrossProviderTransfer.js'
 import {ErrorCode} from '../protocol/errors.js'
 
 export function isFtpPath(p: string): boolean {
     return p.startsWith('ftp://')
+}
+
+export function isFtpArchivePath(p: string): boolean {
+    return p.startsWith('ftp://') && p.includes('::')
 }
 
 export function extractFtpSessionId(p: string): string {
@@ -22,9 +27,13 @@ export class ProviderRouter {
         private archive: ArchiveProvider,
         private pathGuard: PathGuard,
         private ftpSessions?: FtpSessionManager,
+        private ftpArchive?: FtpArchiveProvider,
     ) {}
 
     resolve(path: string): FileSystemProvider {
+        if (isFtpArchivePath(path)) {
+            return this.resolveFtpArchive()
+        }
         if (isFtpPath(path)) {
             return this.resolveFtp(path)
         }
@@ -33,6 +42,10 @@ export class ProviderRouter {
     }
 
     resolveForTransfer(sources: string[], destination: string): FileSystemProvider {
+        if (isFtpArchivePath(sources[0]) || isFtpArchivePath(destination)) {
+            return this.resolveFtpArchive()
+        }
+
         const srcIsFtp = isFtpPath(sources[0])
         const destIsFtp = isFtpPath(destination)
 
@@ -60,6 +73,11 @@ export class ProviderRouter {
 
     findAdapter(archivePath: string) {
         return this.archive.findAdapter(archivePath)
+    }
+
+    private resolveFtpArchive(): FileSystemProvider {
+        if (!this.ftpArchive) throw new Error('FTP archive not configured')
+        return this.ftpArchive
     }
 
     private resolveFtp(p: string): FileSystemProvider {
