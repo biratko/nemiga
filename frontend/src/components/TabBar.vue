@@ -28,6 +28,10 @@ const scrollContainer = ref<HTMLElement | null>(null)
 const showLeftArrow = ref(false)
 const showRightArrow = ref(false)
 
+function isFtpTab(tab: TabState): boolean {
+    return tab.path.startsWith('ftp://')
+}
+
 function tabLabel(tab: TabState): string {
     if (tab.path === '/') return '/'
     return tab.path.split('/').pop() || tab.path
@@ -120,6 +124,9 @@ function onCtxCloseOthers() {
                 </svg>
                 <svg v-else-if="tab.mode === 'fixed'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2v8m-4-4 4 4 4-4M5 14h14l-1 8H6z"/>
+                </svg>
+                <svg v-else-if="isFtpTab(tab)" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2v8m0 4v8M2 12h8m4 0h8"/><circle cx="12" cy="12" r="3"/>
                 </svg>
                 <span class="tab-label">{{ tabLabel(tab) }}</span>
             </div>
