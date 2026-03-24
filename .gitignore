@@ -20,9 +20,13 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# Git worktrees
+.worktrees/
 /.idea/
 
 # Python
 __pycache__/
 /electron/dist/
 /.claude/
+/CLAUDE.md
