@@ -23,15 +23,15 @@ export function makeFsListHandler(router: ProviderRouter) {
         const result = await provider.list(dirPath)
 
         if (result.ok) {
-            if (!dirPath.startsWith('ftp://')) {
-                for (const entry of result.entries) {
-                    if (entry.type === 'file') {
-                        const lower = entry.name.toLowerCase()
-                        if (archiveExts.some(ext => lower.endsWith(ext))) {
-                            entry.isArchive = true
-                        }
+            for (const entry of result.entries) {
+                if (entry.type === 'file') {
+                    const lower = entry.name.toLowerCase()
+                    if (archiveExts.some(ext => lower.endsWith(ext))) {
+                        entry.isArchive = true
                     }
                 }
+            }
+            if (!dirPath.startsWith('ftp://')) {
                 result.path = toPosix(result.path)
             }
         }

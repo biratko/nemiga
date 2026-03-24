@@ -13,7 +13,11 @@ import {JsonFileStorage} from './storage/JsonFileStorage.js'
 import {WorkspaceService} from './workspace/WorkspaceService.js'
 import {SettingsService} from './settings/SettingsService.js'
 import {FtpSessionManager} from './ftp/FtpSessionManager.js'
+import {FtpArchiveCache} from './ftp/FtpArchiveCache.js'
+import {FtpArchiveProvider} from './ftp/FtpArchiveProvider.js'
+import {NotifyServer} from './ws/NotifyServer.js'
 import {ftpRouter} from './api/ftp.js'
+import {ftpArchiveRouter} from './api/ftp-archive.js'
 
 export interface AppInstance {
     server: http.Server
@@ -34,7 +38,12 @@ export function createApp(options: AppOptions = {}): AppInstance {
     archiveProvider.registerAdapter(new TarAdapter())
     archiveProvider.registerAdapter(new SevenZipAdapter())
     const ftpSessionManager = new FtpSessionManager()
-    const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager)
+    const ftpArchiveCache = new FtpArchiveCache(ftpSessionManager)
+    const ftpArchiveProvider = new FtpArchiveProvider(ftpArchiveCache, archiveProvider, ftpSessionManager)
+    ftpSessionManager.setArchiveCache(ftpArchiveCache)
+    const notifyServer = new NotifyServer()
+    ftpSessionManager.setNotifyServer(notifyServer)
+    const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager, ftpArchiveProvider)
     const storage = new JsonFileStorage()
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
@@ -45,6 +54,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
         workspaceRouter(workspaceService),
         settingsRouter(settingsService),
         ftpRouter(ftpSessionManager),
+        ftpArchiveRouter(ftpArchiveCache, ftpSessionManager),
     ]
     const app = createExpressApp(apiRouters, apiErrorHandler, {
         frontendDist: options.frontendDist,
@@ -52,9 +62,12 @@ export function createApp(options: AppOptions = {}): AppInstance {
 
     const server = http.createServer(app)
     wsServer.attach(server)
+    notifyServer.attach(server)
 
     async function cleanup() {
         wsServer.close()
+        notifyServer.close()
+        await ftpArchiveCache.cleanup().catch(() => {})
         await archiveProvider.cleanup().catch(() => {})
         await ftpSessionManager.cleanup().catch(() => {})
         await new Promise<void>((resolve, reject) => {

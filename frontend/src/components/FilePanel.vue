@@ -8,9 +8,12 @@ import { useVirtualScroll } from '@/composables/useVirtualScroll'
 import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
+import { useNotifyWs } from '@/composables/useNotifyWs'
+import { commitFtpArchive } from '@/api/fs'
 import ContextMenu from '@/components/ContextMenu.vue'
 import DriveSelector from '@/components/DriveSelector.vue'
 import FileIcon from '@/components/FileIcon.vue'
+import FtpArchiveCommitErrorDialog from '@/components/FtpArchiveCommitErrorDialog.vue'
 import { formatSize, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 
@@ -84,6 +87,49 @@ const {
 const {
   menuState, onRightMouseDown, onMouseMove, onRightMouseUp, closeMenu,
 } = useContextMenu(contextMenuSuppressed)
+
+// FTP archive commit-on-exit
+interface CommitErrorState {
+  visible: boolean
+  ftpPath: string
+  sessionDead: boolean
+  resolve: (() => void) | null
+}
+
+const commitErrorState = ref<CommitErrorState>({visible: false, ftpPath: '', sessionDead: false, resolve: null})
+
+function getFtpArchiveFilePart(path: string): string | null {
+  if (!path.startsWith('ftp://')) return null
+  const sepIdx = path.indexOf('::')
+  if (sepIdx === -1) return null
+  return path.slice(0, sepIdx)
+}
+
+async function maybeCommitFtpArchive(targetPath: string): Promise<void> {
+  const current = getFtpArchiveFilePart(currentPath.value)
+  if (!current) return
+  if (current === getFtpArchiveFilePart(targetPath)) return
+
+  const result = await commitFtpArchive(current)
+  if (result.ok) return
+
+  await new Promise<void>((resolve) => {
+    commitErrorState.value = {visible: true, ftpPath: current, sessionDead: false, resolve}
+  })
+}
+
+function onCommitErrorResolved() {
+  const resolve = commitErrorState.value.resolve
+  commitErrorState.value = {visible: false, ftpPath: '', sessionDead: false, resolve: null}
+  resolve?.()
+}
+
+const {on: onNotify} = useNotifyWs()
+onNotify('ftp-archive-lost', (data: any) => {
+  const ftpPath = data?.ftpPath as string | undefined
+  if (!ftpPath || !currentPath.value.startsWith(ftpPath)) return
+  commitErrorState.value = {visible: true, ftpPath, sessionDead: true, resolve: null}
+})
 
 function handleContextMenuSelect(action: string, event: MouseEvent) {
   if (action === 'rename' && menuState.value.entry) {
@@ -175,13 +221,14 @@ function setSort(key: 'name' | 'size' | 'modified') {
   emit('sort-change', { key: sortKey.value, dir: sortDir.value })
 }
 
-function navigate(entry: FSEntry) {
+async function navigate(entry: FSEntry) {
   if (entry.type === 'directory') {
     const target = joinPath(currentPath.value, entry.name)
     if (props.interceptNavigation) {
       emit('before-navigate', target)
       return
     }
+    await maybeCommitFtpArchive(target)
     loadDirectory(target)
   } else if (entry.isArchive) {
     const archivePath = joinPath(currentPath.value, entry.name)
@@ -190,6 +237,7 @@ function navigate(entry: FSEntry) {
       emit('before-navigate', target)
       return
     }
+    await maybeCommitFtpArchive(target)
     loadDirectory(target)
   }
 }
@@ -240,6 +288,7 @@ async function goUp() {
       emit('before-navigate', parent)
       return
     }
+    await maybeCommitFtpArchive(parent)
     await loadDirectory(parent)
     if (archiveName) {
       const idx = sortedEntries.value.findIndex(e => e.name === archiveName)
@@ -424,6 +473,12 @@ onBeforeUnmount(() => {
       :has-multi-select="selectedNames.size > 0"
       @select="handleContextMenuSelect"
       @close="closeMenu"
+    />
+    <FtpArchiveCommitErrorDialog
+      v-if="commitErrorState.visible"
+      :ftp-path="commitErrorState.ftpPath"
+      :session-dead="commitErrorState.sessionDead"
+      @resolved="onCommitErrorResolved"
     />
   </div>
 </template>

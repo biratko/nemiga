@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, computed} from 'vue'
 import {ftpDisconnect} from '@/api/ftp'
+import {commitFtpArchive} from '@/api/fs'
 import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
 import type {PanelSort} from '@/types/workspace'
 import type {PanelAPI} from '@/types/panel'
@@ -69,10 +70,21 @@ function extractFtpSessionId(path: string): string | null {
     return atIndex === -1 ? authority : authority.slice(0, atIndex)
 }
 
-function closeTab(index: number) {
+function getFtpArchiveFilePart(path: string): string | null {
+    if (!path.startsWith('ftp://')) return null
+    const sepIdx = path.indexOf('::')
+    if (sepIdx === -1) return null
+    return path.slice(0, sepIdx)
+}
+
+async function closeTab(index: number) {
     if (tabs.value.length <= 1) return
     snapshotCurrentTab()
     const closingTab = tabs.value[index]
+    const archivePart = getFtpArchiveFilePart(closingTab.path)
+    if (archivePart) {
+        await commitFtpArchive(archivePart).catch(() => {})
+    }
     const sessionId = extractFtpSessionId(closingTab.path)
     if (sessionId) {
         ftpDisconnect(sessionId).catch(() => {})
@@ -86,11 +98,15 @@ function closeTab(index: number) {
     emitTabsChange()
 }
 
-function closeOtherTabs(keepIndex: number) {
+async function closeOtherTabs(keepIndex: number) {
     snapshotCurrentTab()
     const kept = tabs.value[keepIndex]
     for (const tab of tabs.value) {
-        if (tab === tabs.value[keepIndex]) continue
+        if (tab === kept) continue
+        const archivePart = getFtpArchiveFilePart(tab.path)
+        if (archivePart) {
+            await commitFtpArchive(archivePart).catch(() => {})
+        }
         const sid = extractFtpSessionId(tab.path)
         if (sid) ftpDisconnect(sid).catch(() => {})
     }
