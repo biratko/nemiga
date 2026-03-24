@@ -12,6 +12,8 @@ import {WsServer} from './ws/WsServer.js'
 import {JsonFileStorage} from './storage/JsonFileStorage.js'
 import {WorkspaceService} from './workspace/WorkspaceService.js'
 import {SettingsService} from './settings/SettingsService.js'
+import {FtpSessionManager} from './ftp/FtpSessionManager.js'
+import {ftpRouter} from './api/ftp.js'
 
 export interface AppInstance {
     server: http.Server
@@ -31,7 +33,8 @@ export function createApp(options: AppOptions = {}): AppInstance {
     archiveProvider.registerAdapter(new ZipAdapter())
     archiveProvider.registerAdapter(new TarAdapter())
     archiveProvider.registerAdapter(new SevenZipAdapter())
-    const router = new ProviderRouter(provider, archiveProvider, pathGuard)
+    const ftpSessionManager = new FtpSessionManager()
+    const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager)
     const storage = new JsonFileStorage()
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
@@ -41,6 +44,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
         fsRouter(router, settingsService, pathGuard),
         workspaceRouter(workspaceService),
         settingsRouter(settingsService),
+        ftpRouter(ftpSessionManager),
     ]
     const app = createExpressApp(apiRouters, apiErrorHandler, {
         frontendDist: options.frontendDist,
@@ -52,6 +56,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
     async function cleanup() {
         wsServer.close()
         await archiveProvider.cleanup().catch(() => {})
+        await ftpSessionManager.cleanup().catch(() => {})
         await new Promise<void>((resolve, reject) => {
             server.close((err) => err ? reject(err) : resolve())
         })
