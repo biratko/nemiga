@@ -8,7 +8,8 @@ export function makeFsListHandler(router: ProviderRouter) {
     const archiveExts = router.getArchiveExtensions()
 
     return async (req: Request, res: Response): Promise<void> => {
-        const dirPath = req.query.path ? fromPosix(req.query.path as string) : undefined
+        const rawPath = req.query.path ? String(req.query.path) : undefined
+        const dirPath = rawPath?.startsWith('ftp://') ? rawPath : rawPath ? fromPosix(rawPath) : undefined
 
         if (!dirPath) {
             res.json({
@@ -21,20 +22,18 @@ export function makeFsListHandler(router: ProviderRouter) {
         const provider = router.resolve(dirPath)
         const result = await provider.list(dirPath)
 
-        // Mark archive files so frontend can navigate into them
         if (result.ok) {
-            for (const entry of result.entries) {
-                if (entry.type === 'file') {
-                    const lower = entry.name.toLowerCase()
-                    if (archiveExts.some(ext => lower.endsWith(ext))) {
-                        entry.isArchive = true
+            if (!dirPath.startsWith('ftp://')) {
+                for (const entry of result.entries) {
+                    if (entry.type === 'file') {
+                        const lower = entry.name.toLowerCase()
+                        if (archiveExts.some(ext => lower.endsWith(ext))) {
+                            entry.isArchive = true
+                        }
                     }
                 }
+                result.path = toPosix(result.path)
             }
-        }
-
-        if (result.ok) {
-            result.path = toPosix(result.path)
         }
 
         res.json(result)
