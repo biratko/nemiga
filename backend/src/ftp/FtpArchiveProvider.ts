@@ -14,6 +14,7 @@ import {isFtpPath, extractFtpSessionId} from '../providers/ProviderRouter.js'
 
 export function splitFtpArchivePath(p: string): {ftpPart: string; innerPart: string} {
     const idx = p.indexOf('::')
+    if (idx === -1) throw new Error(`Not an FTP archive path: ${p}`)
     return {
         ftpPart: p.slice(0, idx),
         innerPart: p.slice(idx + 2) || '/',
@@ -111,10 +112,9 @@ export class FtpArchiveProvider implements FileSystemProvider {
 
     async createReadStream(filePath: string): Promise<Readable> {
         const localVirtual = await this.localVirtualPath(filePath)
-        const provider = this.archiveProvider as FileSystemProvider
-        if (!provider.createReadStream) {
+        if (!('createReadStream' in this.archiveProvider) || typeof (this.archiveProvider as any).createReadStream !== 'function') {
             throw new Error('ArchiveProvider does not support createReadStream')
         }
-        return provider.createReadStream(localVirtual)
+        return (this.archiveProvider as any).createReadStream(localVirtual)
     }
 }
