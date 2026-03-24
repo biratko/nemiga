@@ -11,7 +11,7 @@ const emit = defineEmits<{
 const protocol = ref<'ftp' | 'ftps' | 'sftp'>('ftp')
 const host = ref('')
 const port = ref(21)
-const username = ref('')
+const username = ref('anonymous')
 const password = ref('')
 const remotePath = ref('/')
 const connecting = ref(false)
@@ -54,7 +54,7 @@ async function doConnect() {
 
     if (result.ok && result.sessionId) {
         const rp = remotePath.value.trim() || '/'
-        const ftpPath = `ftp://${result.sessionId}${rp.startsWith('/') ? '' : '/'}${rp}`
+        const ftpPath = `ftp://${result.sessionId}@${host.value.trim()}${rp.startsWith('/') ? '' : '/'}${rp}`
         emit('connected', ftpPath)
     } else {
         errorMsg.value = result.error?.message ?? 'Connection failed'

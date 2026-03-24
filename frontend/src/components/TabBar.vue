@@ -32,9 +32,22 @@ function isFtpTab(tab: TabState): boolean {
     return tab.path.startsWith('ftp://')
 }
 
+function extractFtpHost(path: string): string | null {
+    if (!path.startsWith('ftp://')) return null
+    const rest = path.slice('ftp://'.length)
+    const slashIndex = rest.indexOf('/')
+    const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    return atIndex === -1 ? null : authority.slice(atIndex + 1)
+}
+
 function tabLabel(tab: TabState): string {
     if (tab.path === '/') return '/'
-    return tab.path.split('/').pop() || tab.path
+    const lastSegment = tab.path.split('/').pop() || ''
+    if (isFtpTab(tab) && !lastSegment) {
+        return extractFtpHost(tab.path) ?? tab.path
+    }
+    return lastSegment || tab.path
 }
 
 function updateArrows() {
@@ -125,9 +138,7 @@ function onCtxCloseOthers() {
                 <svg v-else-if="tab.mode === 'fixed'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2v8m-4-4 4 4 4-4M5 14h14l-1 8H6z"/>
                 </svg>
-                <svg v-else-if="isFtpTab(tab)" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v8m0 4v8M2 12h8m4 0h8"/><circle cx="12" cy="12" r="3"/>
-                </svg>
+                <span v-else-if="isFtpTab(tab)" class="tab-ftp-badge">FTP:</span>
                 <span class="tab-label">{{ tabLabel(tab) }}</span>
             </div>
         </div>
@@ -239,6 +250,14 @@ function onCtxCloseOthers() {
     height: 10px;
     flex-shrink: 0;
     color: var(--accent);
+}
+
+.tab-ftp-badge {
+    font-size: 9px;
+    font-weight: 600;
+    color: #4caf50;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
 }
 
 .tab-label {

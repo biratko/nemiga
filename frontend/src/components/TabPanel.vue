@@ -64,7 +64,9 @@ function extractFtpSessionId(path: string): string | null {
     if (!path.startsWith('ftp://')) return null
     const rest = path.slice('ftp://'.length)
     const slashIndex = rest.indexOf('/')
-    return slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+    const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    return atIndex === -1 ? authority : authority.slice(0, atIndex)
 }
 
 function closeTab(index: number) {

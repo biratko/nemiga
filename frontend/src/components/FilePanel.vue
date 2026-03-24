@@ -272,6 +272,24 @@ function copyPath() {
 
 const pathSegments = computed(() => {
   const full = currentPath.value
+  if (full.startsWith('ftp://')) {
+    const rest = full.slice('ftp://'.length)
+    const slashIndex = rest.indexOf('/')
+    const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    const host = atIndex === -1 ? authority : authority.slice(atIndex + 1)
+    const ftpPrefix = 'ftp://' + authority
+    const remotePath = slashIndex === -1 ? '' : rest.slice(slashIndex)
+    const remoteParts = remotePath.split('/').filter(Boolean)
+    const segments = [{name: host, path: ftpPrefix + '/'}]
+    for (let i = 0; i < remoteParts.length; i++) {
+      segments.push({
+        name: remoteParts[i],
+        path: ftpPrefix + '/' + remoteParts.slice(0, i + 1).join('/'),
+      })
+    }
+    return segments
+  }
   const parts = full.split('/').filter(Boolean)
   return parts.map((name, i) => ({
     name,

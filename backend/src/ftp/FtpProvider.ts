@@ -15,12 +15,14 @@ import path from 'node:path'
 export class FtpProvider implements FileSystemProvider {
     private adapter: FtpAdapter
     private sessionId: string
+    private host: string
     private keepaliveTimer: ReturnType<typeof setInterval> | null = null
     private lastAccess = Date.now()
     private mutex = new Mutex()
 
     constructor(sessionId: string, params: FtpConnectionParams) {
         this.sessionId = sessionId
+        this.host = params.host
         if (params.protocol === 'sftp') {
             this.adapter = new SftpAdapter()
         } else {
@@ -64,7 +66,7 @@ export class FtpProvider implements FileSystemProvider {
             const resolvedPath = remotePath === '/' || remotePath === ''
                 ? await this.run(() => this.adapter.pwd())
                 : remotePath
-            const fullPath = `ftp://${this.sessionId}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`
+            const fullPath = `${this.pathPrefix}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`
             const result: FSEntry[] = []
             if (remotePath !== '/') {
                 result.push({
@@ -143,7 +145,7 @@ export class FtpProvider implements FileSystemProvider {
         const remotePath = this.stripPrefix(dirPath)
         try {
             await this.run(() => this.adapter.mkdir(remotePath))
-            return {ok: true as const, path: `ftp://${this.sessionId}${remotePath}`}
+            return {ok: true as const, path: `${this.pathPrefix}${remotePath}`}
         } catch (err: any) {
             return {ok: false as const, error: {code: ErrorCode.INTERNAL, message: err.message}}
         }
@@ -173,10 +175,19 @@ export class FtpProvider implements FileSystemProvider {
         return this.run(() => this.adapter.createWriteStream(remotePath))
     }
 
+    private get pathPrefix(): string {
+        return `ftp://${this.sessionId}@${this.host}`
+    }
+
     private stripPrefix(fullPath: string): string {
-        const prefix = `ftp://${this.sessionId}`
-        if (fullPath.startsWith(prefix)) {
-            const rest = fullPath.slice(prefix.length)
+        if (fullPath.startsWith(this.pathPrefix)) {
+            const rest = fullPath.slice(this.pathPrefix.length)
+            return rest || '/'
+        }
+        // Legacy format without host
+        const legacyPrefix = `ftp://${this.sessionId}`
+        if (fullPath.startsWith(legacyPrefix)) {
+            const rest = fullPath.slice(legacyPrefix.length)
             return rest || '/'
         }
         return fullPath

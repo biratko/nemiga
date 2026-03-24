@@ -13,7 +13,9 @@ export function isFtpPath(p: string): boolean {
 export function extractFtpSessionId(p: string): string {
     const withoutPrefix = p.slice('ftp://'.length)
     const slashIndex = withoutPrefix.indexOf('/')
-    return slashIndex === -1 ? withoutPrefix : withoutPrefix.slice(0, slashIndex)
+    const authority = slashIndex === -1 ? withoutPrefix : withoutPrefix.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    return atIndex === -1 ? authority : authority.slice(0, atIndex)
 }
 
 export class ProviderRouter {
