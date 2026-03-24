@@ -1,17 +1,40 @@
 import {randomUUID} from 'node:crypto'
+import fsSync from 'node:fs'
+import {pipeline} from 'node:stream/promises'
 import type {FtpConnectionParams} from '../protocol/ftp-types.js'
 import {FtpProvider} from './FtpProvider.js'
+import type {FtpArchiveCache} from './FtpArchiveCache.js'
+import type {NotifyServer} from '../ws/NotifyServer.js'
 
 const SESSION_TIMEOUT_MS = 15 * 60 * 1000
 const REAPER_INTERVAL_MS = 5 * 60 * 1000
 const CONNECT_TIMEOUT_MS = 10_000
 
+interface SessionEntry {
+    provider: FtpProvider
+    credentials: FtpConnectionParams
+    reconnecting: boolean
+}
+
 export class FtpSessionManager {
-    private sessions = new Map<string, FtpProvider>()
+    private sessions = new Map<string, SessionEntry>()
     private reaperTimer: ReturnType<typeof setInterval> | null = null
+    private isReaping = false
+    private archiveCache?: FtpArchiveCache
+    private notifyServer?: NotifyServer
 
     constructor() {
-        this.reaperTimer = setInterval(() => this.reapStaleSessions(), REAPER_INTERVAL_MS)
+        this.reaperTimer = setInterval(() => {
+            this.reapStaleSessions().catch(() => {})
+        }, REAPER_INTERVAL_MS)
+    }
+
+    setArchiveCache(cache: FtpArchiveCache): void {
+        this.archiveCache = cache
+    }
+
+    setNotifyServer(notify: NotifyServer): void {
+        this.notifyServer = notify
     }
 
     async connect(params: FtpConnectionParams): Promise<string> {
@@ -25,19 +48,20 @@ export class FtpSessionManager {
 
         await Promise.race([provider.connect(params), timeout]).finally(() => clearTimeout(timer!))
 
-        this.sessions.set(sessionId, provider)
+        this.sessions.set(sessionId, {provider, credentials: params, reconnecting: false})
         return sessionId
     }
 
     async disconnect(sessionId: string): Promise<void> {
-        const provider = this.sessions.get(sessionId)
-        if (!provider) return
+        const entry = this.sessions.get(sessionId)
+        if (!entry) return
+        if (entry.reconnecting) return  // Reaper is mid-reconnect — skip
         this.sessions.delete(sessionId)
-        await provider.disconnect().catch(() => {})
+        await entry.provider.disconnect().catch(() => {})
     }
 
     get(sessionId: string): FtpProvider | undefined {
-        return this.sessions.get(sessionId)
+        return this.sessions.get(sessionId)?.provider
     }
 
     has(sessionId: string): boolean {
@@ -46,7 +70,8 @@ export class FtpSessionManager {
 
     async disconnectAll(): Promise<void> {
         const promises: Promise<void>[] = []
-        for (const [id] of this.sessions) {
+        for (const [id, entry] of this.sessions) {
+            if (entry.reconnecting) continue
             promises.push(this.disconnect(id))
         }
         await Promise.all(promises)
@@ -60,11 +85,81 @@ export class FtpSessionManager {
         await this.disconnectAll()
     }
 
-    private reapStaleSessions(): void {
-        const now = Date.now()
-        for (const [id, provider] of this.sessions) {
-            if (!provider.isConnected() || now - provider.getLastAccess() > SESSION_TIMEOUT_MS) {
-                this.disconnect(id).catch(() => {})
+    private async reapStaleSessions(): Promise<void> {
+        if (this.isReaping) return
+        this.isReaping = true
+        try {
+            const now = Date.now()
+            for (const [id, entry] of this.sessions) {
+                if (entry.reconnecting) continue
+                const isStale = !entry.provider.isConnected() ||
+                    now - entry.provider.getLastAccess() > SESSION_TIMEOUT_MS
+                if (!isStale) continue
+
+                const dirtyArchives = this.archiveCache?.getDirtyForSession(id) ?? []
+                if (dirtyArchives.length === 0) {
+                    await this.disconnect(id).catch(() => {})
+                    continue
+                }
+
+                // Dirty archives exist — attempt auto-reconnect + commit
+                entry.reconnecting = true
+                try {
+                    const newSessionId = randomUUID()
+                    const newProvider = new FtpProvider(newSessionId, entry.credentials)
+                    await newProvider.connect(entry.credentials)
+
+                    // Rekey cache entries to new session
+                    for (const oldPath of dirtyArchives) {
+                        const newPath = oldPath.replace(
+                            `ftp://${id}@`,
+                            `ftp://${newSessionId}@`,
+                        )
+                        this.archiveCache!.rekey(oldPath, newPath)
+                    }
+
+                    // Commit dirty archives via new provider
+                    const newPaths = dirtyArchives.map(p =>
+                        p.replace(`ftp://${id}@`, `ftp://${newSessionId}@`)
+                    )
+                    await this.commitDirtyArchives(newPaths, newProvider)
+
+                    // Register new session, remove old
+                    this.sessions.set(newSessionId, {
+                        provider: newProvider,
+                        credentials: entry.credentials,
+                        reconnecting: false,
+                    })
+                    this.sessions.delete(id)
+                    await entry.provider.disconnect().catch(() => {})
+
+                    this.notifyServer?.broadcast('ftp-session-renewed', {
+                        oldSessionId: id,
+                        newSessionId,
+                    })
+                } catch {
+                    entry.reconnecting = false
+                    this.notifyServer?.broadcast('ftp-archive-lost', {sessionId: id})
+                    await this.disconnect(id).catch(() => {})
+                }
+            }
+        } finally {
+            this.isReaping = false
+        }
+    }
+
+    private async commitDirtyArchives(ftpPaths: string[], provider: FtpProvider): Promise<void> {
+        if (!this.archiveCache) return
+        for (const ftpPath of ftpPaths) {
+            if (!this.archiveCache.isDirty(ftpPath)) continue
+            try {
+                const localPath = await this.archiveCache.getLocalPath(ftpPath)
+                const readable = fsSync.createReadStream(localPath)
+                const writable = await provider.createWriteStream(ftpPath)
+                await pipeline(readable, writable)
+                this.archiveCache.markClean(ftpPath)
+            } catch {
+                // Continue with other archives — failure is reported via ftp-archive-lost
             }
         }
     }
