@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {ref, computed} from 'vue'
+import {ftpDisconnect} from '@/api/ftp'
 import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
 import type {PanelSort} from '@/types/workspace'
 import type {PanelAPI} from '@/types/panel'
@@ -59,9 +60,21 @@ function createTab(path?: string) {
     emitTabsChange()
 }
 
+function extractFtpSessionId(path: string): string | null {
+    if (!path.startsWith('ftp://')) return null
+    const rest = path.slice('ftp://'.length)
+    const slashIndex = rest.indexOf('/')
+    return slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+}
+
 function closeTab(index: number) {
     if (tabs.value.length <= 1) return
     snapshotCurrentTab()
+    const closingTab = tabs.value[index]
+    const sessionId = extractFtpSessionId(closingTab.path)
+    if (sessionId) {
+        ftpDisconnect(sessionId).catch(() => {})
+    }
     tabs.value.splice(index, 1)
     if (activeTabIndex.value >= tabs.value.length) {
         activeTabIndex.value = tabs.value.length - 1
@@ -74,6 +87,11 @@ function closeTab(index: number) {
 function closeOtherTabs(keepIndex: number) {
     snapshotCurrentTab()
     const kept = tabs.value[keepIndex]
+    for (const tab of tabs.value) {
+        if (tab === tabs.value[keepIndex]) continue
+        const sid = extractFtpSessionId(tab.path)
+        if (sid) ftpDisconnect(sid).catch(() => {})
+    }
     tabs.value = [kept]
     activeTabIndex.value = 0
     emitTabsChange()
