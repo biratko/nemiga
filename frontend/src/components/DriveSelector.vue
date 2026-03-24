@@ -6,7 +6,7 @@ import driveIconRaw from '@/assets/icons/drive.svg?raw'
 import { getUiZoom } from '@/utils/zoom'
 
 const props = defineProps<{ currentPath: string }>()
-const emit = defineEmits<{ navigate: [path: string] }>()
+const emit = defineEmits<{ navigate: [path: string]; 'open-ftp': [] }>()
 
 const { drives, refreshDrives } = useDriveList()
 const isOpen = ref(false)
@@ -32,6 +32,9 @@ const currentDrive = computed(() => {
     return best
 })
 
+const totalItems = computed(() => drives.value.length + 1)
+const ftpIndex = computed(() => drives.value.length)
+
 function toggle() {
     if (isOpen.value) {
         isOpen.value = false
@@ -49,6 +52,11 @@ function toggle() {
         refreshDrives()
         nextTick(() => menuEl.value?.focus())
     }
+}
+
+function selectFtp() {
+    isOpen.value = false
+    emit('open-ftp')
 }
 
 function select(drive: DriveEntry) {
@@ -69,7 +77,7 @@ function onKeydown(e: KeyboardEvent) {
             e.stopPropagation()
             break
         case 'ArrowDown':
-            highlightIndex.value = Math.min(highlightIndex.value + 1, drives.value.length - 1)
+            highlightIndex.value = Math.min(highlightIndex.value + 1, totalItems.value - 1)
             e.preventDefault()
             break
         case 'ArrowUp':
@@ -77,7 +85,9 @@ function onKeydown(e: KeyboardEvent) {
             e.preventDefault()
             break
         case 'Enter':
-            if (drives.value[highlightIndex.value]) {
+            if (highlightIndex.value === ftpIndex.value) {
+                selectFtp()
+            } else if (drives.value[highlightIndex.value]) {
                 select(drives.value[highlightIndex.value])
             }
             e.preventDefault()
@@ -127,6 +137,21 @@ onBeforeUnmount(() => {
             >
                 <span class="drive-item-icon" v-html="driveIconRaw" />
                 <span class="drive-item-name">{{ drive.name }}</span>
+            </div>
+            <div class="drive-separator" />
+            <div
+                class="drive-item"
+                :class="{ highlight: highlightIndex === ftpIndex }"
+                @click="selectFtp"
+                @mouseenter="highlightIndex = ftpIndex"
+            >
+                <span class="drive-item-icon ftp-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2v8m0 4v8M2 12h8m4 0h8"/>
+                        <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                </span>
+                <span class="drive-item-name">FTP</span>
             </div>
         </div>
     </div>
@@ -228,6 +253,17 @@ onBeforeUnmount(() => {
 }
 
 .drive-item-icon :deep(svg) {
+    width: 100%;
+    height: 100%;
+}
+
+.drive-separator {
+    height: 1px;
+    background: var(--border);
+    margin: 2px 0;
+}
+
+.ftp-icon svg {
     width: 100%;
     height: 100%;
 }

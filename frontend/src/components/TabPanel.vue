@@ -20,6 +20,7 @@ const emit = defineEmits<{
     drop: [op: 'copy' | 'move', sources: string[], destination: string]
     extract: [archivePath: string, shiftKey: boolean]
     pack: [sourcePaths: string[], shiftKey: boolean]
+    'open-ftp': []
 }>()
 
 const tabs = ref<TabState[]>([...props.tabsState.tabs])
@@ -190,6 +191,7 @@ defineExpose({
             @drop="onDrop"
             @extract="onExtract"
             @pack="onPack"
+            @open-ftp="emit('open-ftp')"
         >
             <template #before-header>
                 <TabBar

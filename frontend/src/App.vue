@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, onMounted, onUnmounted, type ComponentPublicInstance} from 'vue'
 import TabPanel from './components/TabPanel.vue'
+import FtpConnectDialog from './components/FtpConnectDialog.vue'
 import CopyDialog from './components/CopyDialog.vue'
 import MoveDialog from './components/MoveDialog.vue'
 import DeleteDialog from './components/DeleteDialog.vue'
@@ -48,6 +49,7 @@ const keyBindings = ref<KeyBindings>({
 })
 
 const showSettings = ref(false)
+const showFtpConnect = ref<'left' | 'right' | null>(null)
 const currentSettings = ref<SettingsState>({})
 
 
@@ -182,6 +184,14 @@ function onDeleteClose(deleted: boolean) {
     if (deleted && basePath) {
         const source = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
         source?.loadDirectory(basePath)
+    }
+}
+
+function onFtpConnected(ftpPath: string) {
+    const panel = showFtpConnect.value === 'left' ? leftPanel.value : rightPanel.value
+    showFtpConnect.value = null
+    if (panel) {
+        panel.loadDirectory(ftpPath)
     }
 }
 
@@ -434,6 +444,7 @@ onUnmounted(() => {
                     @drop="onDrop"
                     @extract="startExtract"
                     @pack="startPack"
+                    @open-ftp="showFtpConnect = 'left'"
                 />
                 <div
                     class="panel-splitter"
@@ -470,6 +481,7 @@ onUnmounted(() => {
                     @drop="onDrop"
                     @extract="startExtract"
                     @pack="startPack"
+                    @open-ftp="showFtpConnect = 'right'"
                 />
             </template>
         </div>
@@ -519,6 +531,11 @@ onUnmounted(() => {
             :source-paths="packOp.sourcePaths"
             :destination="packOp.destination"
             @close="onPackClose"
+        />
+        <FtpConnectDialog
+            v-if="showFtpConnect !== null"
+            @close="showFtpConnect = null"
+            @connected="onFtpConnected"
         />
         <SettingsDialog
             v-if="showSettings"
