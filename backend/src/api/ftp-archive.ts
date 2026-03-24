@@ -56,10 +56,10 @@ export function ftpArchiveRouter(
         }
         try {
             const localPath = await ftpArchiveCache.getLocalPath(ftpPath)
-            const filename = path.posix.basename(ftpPath)
+            const filename = path.posix.basename(ftpPath).replace(/"/g, '')
             res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
             res.setHeader('Content-Type', 'application/octet-stream')
-            fsSync.createReadStream(localPath).pipe(res)
+            await pipeline(fsSync.createReadStream(localPath), res)
         } catch (err: any) {
             res.status(500).json({ok: false, error: {code: ErrorCode.INTERNAL, message: err.message}})
         }
