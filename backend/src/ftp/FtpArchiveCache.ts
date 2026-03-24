@@ -18,6 +18,7 @@ interface CacheEntry {
 
 export class FtpArchiveCache {
     private cache = new Map<string, CacheEntry>()
+    private inflight = new Map<string, Promise<string>>()
     private tmpBase = path.join(os.tmpdir(), 'tacom-ftp-archive')
 
     constructor(private sessions: FtpSessionManager) {}
@@ -34,6 +35,19 @@ export class FtpArchiveCache {
             }
         }
 
+        const inflight = this.inflight.get(ftpPath)
+        if (inflight) return inflight
+
+        const promise = this.download(ftpPath)
+        this.inflight.set(ftpPath, promise)
+        try {
+            return await promise
+        } finally {
+            this.inflight.delete(ftpPath)
+        }
+    }
+
+    private async download(ftpPath: string): Promise<string> {
         const sessionId = extractFtpSessionId(ftpPath)
         const provider = this.sessions.get(sessionId)
         if (!provider) throw new Error(`FTP session not found: ${sessionId}`)
@@ -68,6 +82,7 @@ export class FtpArchiveCache {
         if (!entry) return
         entry.dirty = false
         entry.lastAccess = Date.now()
+        if (entry.timer) clearTimeout(entry.timer)
         entry.timer = this.scheduleEvict(ftpPath)
     }
 
