@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
 import { startFtpServer, startFtpsServer, seedFiles, cleanDir, type FtpTestServer } from './helpers/ftp-server.js'
 import { FtpSessionManager } from '../ftp/FtpSessionManager.js'
+import { FtpArchiveCache } from '../ftp/FtpArchiveCache.js'
+import { FtpArchiveProvider } from '../ftp/FtpArchiveProvider.js'
+import { ArchiveProvider } from '../archive/ArchiveProvider.js'
+import { ZipAdapter } from '../archive/adapters/ZipAdapter.js'
 
 describe('FTP Connection & Session Lifecycle', () => {
   let ftpServer: FtpTestServer
@@ -129,5 +133,59 @@ describe('FTP Connection & Session Lifecycle', () => {
 
       expect(manager.get(sessionId)).toBeUndefined()
     }, 10_000)
+
+    it('should reconnect and commit dirty archive instead of evicting', async () => {
+      const { createZipBuffer } = await import('./helpers/archive-fixtures.js')
+      const zipBuffer = await createZipBuffer({ 'original.txt': 'original' })
+      await seedFiles(ftpServer.rootDir, { 'dirty-test.zip': zipBuffer })
+
+      const archiveManager = new FtpSessionManager({
+        sessionTimeoutMs: 1_500,
+        reaperIntervalMs: 500,
+      })
+      const archiveProvider = new ArchiveProvider()
+      archiveProvider.registerAdapter(new ZipAdapter())
+      const archiveCache = new FtpArchiveCache(archiveManager, { ttlCleanMs: 60_000 })
+      const ftpArchiveProvider = new FtpArchiveProvider(archiveCache, archiveProvider, archiveManager)
+      archiveManager.setArchiveCache(archiveCache)
+      // No notifyServer needed for tests — setNotifyServer is optional
+
+      const sid = await archiveManager.connect({
+        protocol: 'ftp',
+        host: ftpServer.host,
+        port: ftpServer.port,
+        username: 'test',
+        password: 'test',
+      })
+      const ftpPrefix = `ftp://${sid}@${ftpServer.host}`
+
+      await ftpArchiveProvider.mkdir(`${ftpPrefix}/dirty-test.zip::/added-dir`)
+      expect(archiveCache.isDirty(`${ftpPrefix}/dirty-test.zip`)).toBe(true)
+
+      // Wait for reaper to fire and commit
+      await new Promise(r => setTimeout(r, 3_000))
+
+      // Old session should be gone — replaced by new session after commit
+      expect(archiveManager.get(sid)).toBeUndefined()
+
+      // Connect fresh and verify the committed changes persist on the FTP server
+      const newSid = await archiveManager.connect({
+        protocol: 'ftp',
+        host: ftpServer.host,
+        port: ftpServer.port,
+        username: 'test',
+        password: 'test',
+      })
+      const newPrefix = `ftp://${newSid}@${ftpServer.host}`
+      await archiveCache.cleanup()
+      const result = await ftpArchiveProvider.list(`${newPrefix}/dirty-test.zip::/`)
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.entries.map(e => e.name)).toContain('added-dir')
+
+      await archiveCache.cleanup()
+      await archiveProvider.cleanup()
+      await archiveManager.cleanup()
+    }, 15_000)
   })
 })
