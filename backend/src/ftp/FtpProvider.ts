@@ -182,6 +182,20 @@ export class FtpProvider implements FileSystemProvider {
         }
     }
 
+    async atomicUpload(filePath: string, localPath: string): Promise<void> {
+        this.lastAccess = Date.now()
+        const remotePath = this.stripPrefix(filePath)
+        const tmpRemote = remotePath + `.tmp.${Date.now()}`
+        await this.run(() => this.adapter.uploadFromFile(localPath, tmpRemote))
+        try {
+            await this.run(() => this.adapter.delete(remotePath)).catch(() => {})
+            await this.run(() => this.adapter.rename(tmpRemote, remotePath))
+        } catch (err) {
+            await this.run(() => this.adapter.delete(tmpRemote)).catch(() => {})
+            throw err
+        }
+    }
+
     async createReadStream(filePath: string): Promise<Readable> {
         this.lastAccess = Date.now()
         const remotePath = this.stripPrefix(filePath)

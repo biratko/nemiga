@@ -1,6 +1,4 @@
 import {randomUUID} from 'node:crypto'
-import fsSync from 'node:fs'
-import {pipeline} from 'node:stream/promises'
 import type {FtpConnectionParams} from '../protocol/ftp-types.js'
 import {FtpProvider} from './FtpProvider.js'
 import type {FtpProviderOptions} from './FtpProvider.js'
@@ -167,9 +165,7 @@ export class FtpSessionManager {
             if (!this.archiveCache.isDirty(ftpPath)) continue
             try {
                 const localPath = await this.archiveCache.getLocalPath(ftpPath)
-                const readable = fsSync.createReadStream(localPath)
-                const writable = await provider.createWriteStream(ftpPath)
-                await pipeline(readable, writable)
+                await provider.atomicUpload(ftpPath, localPath)
                 this.archiveCache.markClean(ftpPath)
             } catch {
                 // Continue with other archives — failure is reported via ftp-archive-lost

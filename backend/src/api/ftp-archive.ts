@@ -28,9 +28,7 @@ export function ftpArchiveRouter(
             const sessionId = extractFtpSessionId(ftpPath)
             const provider = ftpSessionManager.get(sessionId)
             if (!provider) throw new Error(`FTP session not found: ${sessionId}`)
-            const readable = fsSync.createReadStream(localPath)
-            const writable = await provider.createWriteStream(ftpPath)
-            await pipeline(readable, writable)
+            await provider.atomicUpload(ftpPath, localPath)
             ftpArchiveCache.markClean(ftpPath)
             res.json({ok: true})
         } catch (err: any) {
