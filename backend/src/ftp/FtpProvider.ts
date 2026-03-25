@@ -12,6 +12,12 @@ import {SftpAdapter} from './adapters/SftpAdapter.js'
 import {ErrorCode} from '../protocol/errors.js'
 import path from 'node:path'
 
+export interface FtpProviderOptions {
+    keepaliveIntervalMs?: number
+}
+
+const DEFAULT_KEEPALIVE_INTERVAL_MS = 30_000
+
 export class FtpProvider implements FileSystemProvider {
     private adapter: FtpAdapter
     private sessionId: string
@@ -19,10 +25,12 @@ export class FtpProvider implements FileSystemProvider {
     private keepaliveTimer: ReturnType<typeof setInterval> | null = null
     private lastAccess = Date.now()
     private mutex = new Mutex()
+    private keepaliveIntervalMs: number
 
-    constructor(sessionId: string, params: FtpConnectionParams) {
+    constructor(sessionId: string, params: FtpConnectionParams, options?: FtpProviderOptions) {
         this.sessionId = sessionId
         this.host = params.host
+        this.keepaliveIntervalMs = options?.keepaliveIntervalMs ?? DEFAULT_KEEPALIVE_INTERVAL_MS
         if (params.protocol === 'sftp') {
             this.adapter = new SftpAdapter()
         } else {
@@ -240,7 +248,7 @@ export class FtpProvider implements FileSystemProvider {
             } catch {
                 // Connection lost — will be caught on next operation
             }
-        }, 30_000)
+        }, this.keepaliveIntervalMs)
     }
 
     private stopKeepalive(): void {

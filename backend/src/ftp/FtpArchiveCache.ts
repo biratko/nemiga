@@ -7,7 +7,11 @@ import {pipeline} from 'node:stream/promises'
 import {extractFtpSessionId} from '../providers/ProviderRouter.js'
 import type {FtpSessionManager} from './FtpSessionManager.js'
 
-const TTL_CLEAN = 5 * 60 * 1000
+const DEFAULT_TTL_CLEAN = 5 * 60 * 1000
+
+export interface ArchiveCacheOptions {
+    ttlCleanMs?: number
+}
 
 interface CacheEntry {
     localPath: string
@@ -20,8 +24,11 @@ export class FtpArchiveCache {
     private cache = new Map<string, CacheEntry>()
     private inflight = new Map<string, Promise<string>>()
     private tmpBase = path.join(os.tmpdir(), 'tacom-ftp-archive')
+    private ttlCleanMs: number
 
-    constructor(private sessions: FtpSessionManager) {}
+    constructor(private sessions: FtpSessionManager, options?: ArchiveCacheOptions) {
+        this.ttlCleanMs = options?.ttlCleanMs ?? DEFAULT_TTL_CLEAN
+    }
 
     async getLocalPath(ftpPath: string): Promise<string> {
         const existing = this.cache.get(ftpPath)
@@ -122,7 +129,7 @@ export class FtpArchiveCache {
     }
 
     private scheduleEvict(ftpPath: string): ReturnType<typeof setTimeout> {
-        return setTimeout(() => this.evict(ftpPath), TTL_CLEAN)
+        return setTimeout(() => this.evict(ftpPath), this.ttlCleanMs)
     }
 
     private resetTimer(ftpPath: string, entry: CacheEntry): void {

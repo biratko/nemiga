@@ -3,12 +3,19 @@ import fsSync from 'node:fs'
 import {pipeline} from 'node:stream/promises'
 import type {FtpConnectionParams} from '../protocol/ftp-types.js'
 import {FtpProvider} from './FtpProvider.js'
+import type {FtpProviderOptions} from './FtpProvider.js'
 import type {FtpArchiveCache} from './FtpArchiveCache.js'
 import type {NotifyServer} from '../ws/NotifyServer.js'
 
-const SESSION_TIMEOUT_MS = 15 * 60 * 1000
-const REAPER_INTERVAL_MS = 5 * 60 * 1000
 const CONNECT_TIMEOUT_MS = 10_000
+const DEFAULT_SESSION_TIMEOUT_MS = 15 * 60 * 1000
+const DEFAULT_REAPER_INTERVAL_MS = 5 * 60 * 1000
+
+export interface SessionManagerOptions {
+    sessionTimeoutMs?: number
+    reaperIntervalMs?: number
+    providerOptions?: FtpProviderOptions
+}
 
 interface SessionEntry {
     provider: FtpProvider
@@ -22,11 +29,17 @@ export class FtpSessionManager {
     private isReaping = false
     private archiveCache?: FtpArchiveCache
     private notifyServer?: NotifyServer
+    private sessionTimeoutMs: number
+    private reaperIntervalMs: number
+    private providerOptions?: FtpProviderOptions
 
-    constructor() {
+    constructor(options?: SessionManagerOptions) {
+        this.sessionTimeoutMs = options?.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS
+        this.reaperIntervalMs = options?.reaperIntervalMs ?? DEFAULT_REAPER_INTERVAL_MS
+        this.providerOptions = options?.providerOptions
         this.reaperTimer = setInterval(() => {
             this.reapStaleSessions().catch(() => {})
-        }, REAPER_INTERVAL_MS)
+        }, this.reaperIntervalMs)
     }
 
     setArchiveCache(cache: FtpArchiveCache): void {
@@ -39,7 +52,7 @@ export class FtpSessionManager {
 
     async connect(params: FtpConnectionParams): Promise<string> {
         const sessionId = randomUUID()
-        const provider = new FtpProvider(sessionId, params)
+        const provider = new FtpProvider(sessionId, params, this.providerOptions)
 
         let timer: ReturnType<typeof setTimeout>
         const timeout = new Promise<never>((_, reject) => {
@@ -93,7 +106,7 @@ export class FtpSessionManager {
             for (const [id, entry] of this.sessions) {
                 if (entry.reconnecting) continue
                 const isStale = !entry.provider.isConnected() ||
-                    now - entry.provider.getLastAccess() > SESSION_TIMEOUT_MS
+                    now - entry.provider.getLastAccess() > this.sessionTimeoutMs
                 if (!isStale) continue
 
                 const dirtyArchives = this.archiveCache?.getDirtyForSession(id) ?? []

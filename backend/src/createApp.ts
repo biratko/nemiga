@@ -13,7 +13,9 @@ import {JsonFileStorage} from './storage/JsonFileStorage.js'
 import {WorkspaceService} from './workspace/WorkspaceService.js'
 import {SettingsService} from './settings/SettingsService.js'
 import {FtpSessionManager} from './ftp/FtpSessionManager.js'
+import type {SessionManagerOptions} from './ftp/FtpSessionManager.js'
 import {FtpArchiveCache} from './ftp/FtpArchiveCache.js'
+import type {ArchiveCacheOptions} from './ftp/FtpArchiveCache.js'
 import {FtpArchiveProvider} from './ftp/FtpArchiveProvider.js'
 import {NotifyServer} from './ws/NotifyServer.js'
 import {ftpRouter} from './api/ftp.js'
@@ -27,6 +29,8 @@ export interface AppInstance {
 export interface AppOptions {
     allowedRoots?: string[]
     frontendDist?: string
+    ftpSessionManagerOptions?: SessionManagerOptions
+    ftpArchiveCacheOptions?: ArchiveCacheOptions
 }
 
 export function createApp(options: AppOptions = {}): AppInstance {
@@ -37,8 +41,8 @@ export function createApp(options: AppOptions = {}): AppInstance {
     archiveProvider.registerAdapter(new ZipAdapter())
     archiveProvider.registerAdapter(new TarAdapter())
     archiveProvider.registerAdapter(new SevenZipAdapter())
-    const ftpSessionManager = new FtpSessionManager()
-    const ftpArchiveCache = new FtpArchiveCache(ftpSessionManager)
+    const ftpSessionManager = new FtpSessionManager(options.ftpSessionManagerOptions)
+    const ftpArchiveCache = new FtpArchiveCache(ftpSessionManager, options.ftpArchiveCacheOptions)
     const ftpArchiveProvider = new FtpArchiveProvider(ftpArchiveCache, archiveProvider, ftpSessionManager)
     ftpSessionManager.setArchiveCache(ftpArchiveCache)
     const notifyServer = new NotifyServer()
