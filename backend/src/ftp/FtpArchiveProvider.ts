@@ -35,35 +35,44 @@ export class FtpArchiveProvider implements FileSystemProvider {
     }
 
     async list(dirPath: string): Promise<ListResult> {
-        return this.archiveProvider.list(await this.localVirtualPath(dirPath))
+        const {ftpPart} = splitFtpArchivePath(dirPath)
+        const localVirtual = await this.localVirtualPath(dirPath)
+        const localArchive = localVirtual.slice(0, localVirtual.indexOf('::'))
+        const result = await this.archiveProvider.list(localVirtual)
+        if (result.ok && result.path) {
+            result.path = result.path.replace(localArchive + '::', ftpPart + '::')
+        }
+        return result
+    }
+
+    private async toLocal(p: string, temps: string[]): Promise<string> {
+        if (isFtpPath(p) && p.includes('::')) {
+            const {ftpPart, innerPart} = splitFtpArchivePath(p)
+            const localArchive = await this.cache.getLocalPath(ftpPart)
+            return localArchive + '::' + innerPart
+        }
+        if (isFtpPath(p)) {
+            const sessionId = extractFtpSessionId(p)
+            const provider = this.sessions.get(sessionId)
+            if (!provider) throw new Error(`FTP session not found: ${sessionId}`)
+            const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tacom-xfer-'))
+            const tmpFile = path.join(tmpDir, path.posix.basename(p))
+            const readable = await provider.createReadStream(p)
+            const writable = fsSync.createWriteStream(tmpFile)
+            await pipeline(readable, writable)
+            temps.push(tmpDir)
+            return tmpFile
+        }
+        return p
     }
 
     async copy(sources: string[], destination: string, ctx: OperationContext, options: CopyOptions): Promise<CopyResult> {
-        const {ftpPart, innerPart} = splitFtpArchivePath(destination)
-        const localArchive = await this.cache.getLocalPath(ftpPart)
-        const localDest = localArchive + '::' + innerPart
-
-        const localSources: string[] = []
         const temps: string[] = []
         try {
-            for (const src of sources) {
-                if (isFtpPath(src) && !src.includes('::')) {
-                    const sessionId = extractFtpSessionId(src)
-                    const provider = this.sessions.get(sessionId)
-                    if (!provider) throw new Error(`FTP session not found: ${sessionId}`)
-                    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tacom-xfer-'))
-                    const tmpFile = path.join(tmpDir, path.posix.basename(src))
-                    const readable = await provider.createReadStream(src)
-                    const writable = fsSync.createWriteStream(tmpFile)
-                    await pipeline(readable, writable)
-                    localSources.push(tmpFile)
-                    temps.push(tmpDir)
-                } else {
-                    localSources.push(src)
-                }
-            }
+            const localDest = await this.toLocal(destination, temps)
+            const localSources = await Promise.all(sources.map(s => this.toLocal(s, temps)))
             const result = await this.archiveProvider.copy(localSources, localDest, ctx)
-            this.cache.markDirty(ftpPart)
+            this.markDirtyIfFtpArchive(destination)
             return result
         } finally {
             for (const t of temps) {
@@ -73,12 +82,25 @@ export class FtpArchiveProvider implements FileSystemProvider {
     }
 
     async move(sources: string[], destination: string, ctx: MoveContext): Promise<MoveResult> {
-        const {ftpPart, innerPart} = splitFtpArchivePath(destination)
-        const localArchive = await this.cache.getLocalPath(ftpPart)
-        const localDest = localArchive + '::' + innerPart
-        const result = await this.archiveProvider.move(sources, localDest, ctx)
-        this.cache.markDirty(ftpPart)
-        return result
+        const temps: string[] = []
+        try {
+            const localDest = await this.toLocal(destination, temps)
+            const localSources = await Promise.all(sources.map(s => this.toLocal(s, temps)))
+            const result = await this.archiveProvider.move(localSources, localDest, ctx)
+            this.markDirtyIfFtpArchive(destination)
+            for (const src of sources) this.markDirtyIfFtpArchive(src)
+            return result
+        } finally {
+            for (const t of temps) {
+                await fs.rm(t, {recursive: true, force: true}).catch(() => {})
+            }
+        }
+    }
+
+    private markDirtyIfFtpArchive(p: string): void {
+        if (isFtpPath(p) && p.includes('::')) {
+            this.cache.markDirty(splitFtpArchivePath(p).ftpPart)
+        }
     }
 
     async delete(paths: string[], ctx: DeleteContext): Promise<DeleteResult> {
