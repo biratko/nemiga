@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/main.js",
-    "dev": "tsx watch src/main.ts"
+    "dev": "tsx watch src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "basic-ftp": "^5.2.0",
@@ -25,12 +27,16 @@
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
     "@types/ssh2-sftp-client": "^9.0.6",
+    "@types/supertest": "^7.2.0",
     "@types/tar-stream": "^3.1.4",
     "@types/which": "^3.0.4",
     "@types/ws": "^8.18.1",
     "@types/yauzl-promise": "^4.0.1",
     "@types/yazl": "^3.3.0",
+    "ftp-srv": "^4.6.3",
+    "supertest": "^7.2.2",
     "tsx": "^4.19.0",
-    "typescript": "~5.7.0"
+    "typescript": "~5.7.0",
+    "vitest": "^4.1.1"
   }
 }
