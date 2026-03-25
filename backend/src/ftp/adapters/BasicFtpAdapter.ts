@@ -1,5 +1,5 @@
 import {Client, type FileInfo} from 'basic-ftp'
-import {PassThrough, type Readable, type Writable} from 'node:stream'
+import {PassThrough, Transform, type Readable, type Writable} from 'node:stream'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {FtpAdapter} from './FtpAdapter.js'
 import path from 'node:path'
@@ -33,9 +33,37 @@ export class BasicFtpAdapter implements FtpAdapter {
     async deleteDir(remotePath: string): Promise<void> { await this.client.removeDir(remotePath) }
 
     async createReadStream(remotePath: string): Promise<Readable> {
+        // Use a PassThrough as the internal download sink for basic-ftp.
+        // basic-ftp writes to the PassThrough; the returned Transform reads from it.
+        //
+        // The challenge: pipeline() resolves as soon as the last byte flows through
+        // the PassThrough, but basic-ftp may still be exchanging the 226 Transfer
+        // Complete response on the control channel. Any FTP command issued before
+        // that response is received will fail with "task still running".
+        //
+        // Fix: wrap the PassThrough in a custom Transform whose final() callback
+        // waits for the downloadFrom promise before signalling completion.
         const passThrough = new PassThrough()
-        this.client.downloadTo(passThrough, remotePath).catch((err) => { passThrough.destroy(err) })
-        return passThrough
+        let downloadDoneResolve!: () => void
+        let downloadDoneReject!: (err: Error) => void
+        const downloadDonePromise = new Promise<void>((res, rej) => {
+            downloadDoneResolve = res
+            downloadDoneReject = rej
+        })
+        this.client.downloadTo(passThrough, remotePath)
+            .then(() => downloadDoneResolve())
+            .catch((err: Error) => {
+                passThrough.destroy(err)
+                downloadDoneReject(err)
+            })
+        const wrapper = new Transform({
+            transform(chunk, _enc, cb) { cb(null, chunk) },
+            flush(cb) {
+                downloadDonePromise.then(() => cb(), cb)
+            },
+        })
+        passThrough.pipe(wrapper)
+        return wrapper
     }
 
     async createWriteStream(remotePath: string): Promise<Writable> {

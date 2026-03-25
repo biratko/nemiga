@@ -69,6 +69,19 @@ export class FtpProvider implements FileSystemProvider {
         const remotePath = this.stripPrefix(dirPath)
         try {
             const entries = await this.run(() => this.adapter.list(remotePath))
+
+            // Some FTP servers return the file itself when LIST is called on a file path.
+            // Detect this "self-listing" pattern: a single non-directory entry whose name
+            // matches either the last path segment or the full remote path.
+            // Treat the path as a file, not a directory.
+            if (entries.length === 1 && entries[0].type !== 'directory') {
+                const basename = path.posix.basename(remotePath)
+                const entryName = entries[0].name
+                if (entryName === basename || entryName === remotePath) {
+                    return {ok: false as const, error: {code: ErrorCode.NOT_A_DIRECTORY, message: `Not a directory: ${dirPath}`}}
+                }
+            }
+
             const resolvedPath = remotePath === '/' || remotePath === ''
                 ? await this.run(() => this.adapter.pwd())
                 : remotePath

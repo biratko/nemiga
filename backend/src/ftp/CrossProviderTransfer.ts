@@ -5,6 +5,18 @@ import type {CopyResult, MoveResult, DeleteResult, MkdirResult, RenameResult, Li
 import {ErrorCode} from '../protocol/errors.js'
 import path from 'node:path'
 
+/**
+ * Join a path segment to a base path without mangling URL schemes.
+ * `path.posix.join` collapses `://` → `:/` so it must not be used on FTP URLs.
+ */
+function joinPath(base: string, segment: string): string {
+    if (base.startsWith('ftp://') || base.startsWith('ftps://') || base.startsWith('sftp://')) {
+        const sep = base.endsWith('/') ? '' : '/'
+        return `${base}${sep}${segment}`
+    }
+    return path.posix.join(base, segment)
+}
+
 export class CrossProviderTransfer implements FileSystemProvider {
     constructor(
         private sourceProvider: FileSystemProvider,
@@ -23,7 +35,7 @@ export class CrossProviderTransfer implements FileSystemProvider {
         for (const source of sources) {
             if (ctx.cancellation.cancelled) break
             const name = path.posix.basename(source)
-            const destPath = path.posix.join(destination, name)
+            const destPath = joinPath(destination, name)
             try {
                 const bytes = await this.copyEntryRecursive(source, destPath, ctx)
                 bytesCopied += bytes
@@ -71,16 +83,24 @@ export class CrossProviderTransfer implements FileSystemProvider {
     private async copyEntryRecursive(srcPath: string, destPath: string, ctx: OperationContext): Promise<number> {
         const listResult = await this.sourceProvider.list(srcPath)
         if (listResult.ok) {
-            await this.destProvider.mkdir(destPath)
-            let bytes = 0
-            for (const entry of listResult.entries) {
-                if (ctx.cancellation.cancelled) throw new Error('aborted')
-                if (entry.name === '..' || entry.name === '.') continue
-                const childSrc = path.posix.join(srcPath, entry.name)
-                const childDest = path.posix.join(destPath, entry.name)
-                bytes += await this.copyEntryRecursive(childSrc, childDest, ctx)
+            const realEntries = listResult.entries.filter(e => e.name !== '..' && e.name !== '.')
+            // Detect "self-listing": some FTP servers return the file itself when LIST is
+            // called on a file path. Treat it as a file in that case.
+            const srcBasename = path.posix.basename(srcPath)
+            const isSelfListing = realEntries.length === 1 &&
+                realEntries[0].type === 'file' &&
+                realEntries[0].name === srcBasename
+            if (!isSelfListing) {
+                await this.destProvider.mkdir(destPath)
+                let bytes = 0
+                for (const entry of realEntries) {
+                    if (ctx.cancellation.cancelled) throw new Error('aborted')
+                    const childSrc = joinPath(srcPath, entry.name)
+                    const childDest = joinPath(destPath, entry.name)
+                    bytes += await this.copyEntryRecursive(childSrc, childDest, ctx)
+                }
+                return bytes
             }
-            return bytes
         }
 
         if (!this.sourceProvider.createReadStream || !this.destProvider.createWriteStream) {
