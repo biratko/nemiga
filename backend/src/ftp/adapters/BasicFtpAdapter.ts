@@ -7,12 +7,13 @@ import path from 'node:path'
 export class BasicFtpAdapter implements FtpAdapter {
     private client = new Client()
 
-    async connect(host: string, port: number, username: string, password: string, options?: {secure?: boolean}): Promise<void> {
+    async connect(host: string, port: number, username: string, password: string, options?: {secure?: boolean; rejectUnauthorized?: boolean}): Promise<void> {
         const secure = options?.secure ?? false
+        const rejectUnauthorized = options?.rejectUnauthorized ?? true
         this.client.ftp.verbose = false
         await this.client.access({
             host, port, user: username, password, secure,
-            secureOptions: secure ? {rejectUnauthorized: false} : undefined,
+            secureOptions: secure ? {rejectUnauthorized} : undefined,
         })
     }
 

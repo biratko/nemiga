@@ -11,18 +11,11 @@ const execAsync = promisify(exec)
 
 export function makeFsRootsHandler(pathGuard: PathGuard) {
     return async (_req: Request, res: Response): Promise<void> => {
-        try {
-            let roots = await detectRoots()
-            if (pathGuard.enabled) {
-                roots = filterByPathGuard(roots, pathGuard)
-            }
-            res.json({ ok: true, roots })
-        } catch (e) {
-            res.json({
-                ok: false,
-                error: { code: 'ROOTS_ERROR', message: e instanceof Error ? e.message : 'Failed to detect drives' },
-            })
+        let roots = await detectRoots()
+        if (pathGuard.enabled) {
+            roots = filterByPathGuard(roots, pathGuard)
         }
+        res.json({ ok: true, roots })
     }
 }
 

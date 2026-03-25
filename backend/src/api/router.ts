@@ -54,5 +54,6 @@ export const apiErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
         return
     }
     console.error('Unhandled error:', err)
-    res.status(500).json({ok: false, error: {code: ErrorCode.INTERNAL, message: 'Internal server error'}})
+    const message = err instanceof Error ? err.message : 'Internal server error'
+    res.status(500).json({ok: false, error: {code: ErrorCode.INTERNAL, message}})
 }

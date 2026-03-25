@@ -13,6 +13,7 @@ const host = ref('')
 const port = ref(21)
 const username = ref('anonymous')
 const password = ref('')
+const rejectUnauthorized = ref(true)
 const remotePath = ref('/')
 const connecting = ref(false)
 const errorMsg = ref('')
@@ -48,6 +49,7 @@ async function doConnect() {
         port: port.value,
         username: username.value.trim(),
         password: password.value,
+        rejectUnauthorized: protocol.value === 'ftps' ? rejectUnauthorized.value : undefined,
     })
 
     connecting.value = false
@@ -88,6 +90,13 @@ async function doConnect() {
             <div class="form-row">
                 <label>Password</label>
                 <input v-model="password" type="password" />
+            </div>
+            <div v-if="protocol === 'ftps'" class="form-row">
+                <label>Verify TLS</label>
+                <label class="checkbox-label">
+                    <input v-model="rejectUnauthorized" type="checkbox" />
+                    Verify server certificate
+                </label>
             </div>
             <div class="form-row">
                 <label>Remote path</label>
@@ -140,6 +149,19 @@ async function doConnect() {
 .form-row input:focus,
 .form-row select:focus {
     border-color: var(--accent);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin: 0;
 }
 
 .form-error {

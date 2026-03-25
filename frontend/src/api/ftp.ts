@@ -4,6 +4,7 @@ export interface FtpConnectParams {
     port: number
     username: string
     password: string
+    rejectUnauthorized?: boolean
 }
 
 export interface FtpConnectResponse {

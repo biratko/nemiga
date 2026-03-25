@@ -44,6 +44,7 @@ export class WsServer {
             }
 
             if (!factory) {
+                socket.destroy()
                 return
             }
 

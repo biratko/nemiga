@@ -108,7 +108,8 @@ onBeforeUnmount(() => {
     <div class="drive-selector" ref="wrapperEl">
         <button class="drive-btn" :title="currentDrive?.name ?? 'Drives'" @click.stop="toggle">
             <span class="drive-icon" v-html="driveIconRaw" />
-            <span v-if="currentDrive" class="drive-label">{{ currentDrive.name }}</span>
+            <span class="drive-label">{{ currentDrive?.name ?? 'Drive' }}</span>
+            <span class="drive-chevron">▾</span>
         </button>
         <div
             v-if="isOpen"
@@ -166,22 +167,21 @@ onBeforeUnmount(() => {
 .drive-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 0 4px;
+    gap: 3px;
+    padding: 0 6px;
     height: 20px;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 3px;
-    color: var(--text-secondary);
+    background: var(--bg-row-hover);
+    border: 1px solid var(--border);
+    border-radius: 0 3px 3px 0;
+    color: var(--text-primary);
     cursor: pointer;
-    font-size: 11px;
+    font-family: var(--font-family);
+    font-size: var(--font-size-xs);
     white-space: nowrap;
 }
 
 .drive-btn:hover {
-    background: var(--bg-row-hover);
-    border-color: var(--border);
-    color: var(--text-primary);
+    background: var(--bg-row-selected);
 }
 
 .drive-icon {
@@ -199,6 +199,12 @@ onBeforeUnmount(() => {
     max-width: 80px;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.drive-chevron {
+    font-size: 10px;
+    line-height: 1;
+    opacity: 0.7;
 }
 
 .drive-dropdown {

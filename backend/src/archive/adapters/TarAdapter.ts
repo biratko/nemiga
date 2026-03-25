@@ -75,6 +75,7 @@ async function rewriteArchive(
     const compression = detectCompression(archivePath)
     const tmpPath = makeTmpPath(archivePath)
 
+    let renamed = false
     try {
         const pack = tar.pack()
         const writeStream = createWriteStream(tmpPath)
@@ -89,8 +90,11 @@ async function rewriteArchive(
         pack.finalize()
         await pipelineDone
         await fsp.rename(tmpPath, archivePath)
+        renamed = true
     } finally {
-        await fsp.rm(tmpPath, {force: true}).catch(() => {})
+        if (!renamed) {
+            await fsp.rm(tmpPath, {force: true}).catch(() => {})
+        }
     }
 }
 
@@ -191,9 +195,9 @@ export class TarAdapter implements CreatableAdapter {
                 fsp.mkdir(destPath, {recursive: true}).then(() => {
                     stream.resume()
                     next()
-                }).catch(() => {
+                }).catch((err) => {
                     stream.resume()
-                    next()
+                    next(err)
                 })
                 return
             }
@@ -216,12 +220,12 @@ export class TarAdapter implements CreatableAdapter {
                     options.onProgress({currentFile: relativeName, bytesWritten, filesDone})
                     next()
                 })
-                writeStream.on('error', () => {
-                    next()
+                writeStream.on('error', (err) => {
+                    next(err)
                 })
-            }).catch(() => {
+            }).catch((err) => {
                 stream.resume()
-                next()
+                next(err)
             })
         })
 

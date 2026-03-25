@@ -2,7 +2,7 @@ import type {Readable, Writable} from 'node:stream'
 import type {FSEntry} from '../../protocol/fs-types.js'
 
 export interface FtpAdapter {
-    connect(host: string, port: number, username: string, password: string, options?: {secure?: boolean}): Promise<void>
+    connect(host: string, port: number, username: string, password: string, options?: {secure?: boolean; rejectUnauthorized?: boolean}): Promise<void>
     disconnect(): Promise<void>
     list(remotePath: string): Promise<FSEntry[]>
     mkdir(remotePath: string): Promise<void>

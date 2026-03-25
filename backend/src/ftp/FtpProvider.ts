@@ -38,7 +38,10 @@ export class FtpProvider implements FileSystemProvider {
 
     async connect(params: FtpConnectionParams): Promise<void> {
         const secure = params.protocol === 'ftps'
-        await this.adapter.connect(params.host, params.port, params.username, params.password, {secure})
+        await this.adapter.connect(params.host, params.port, params.username, params.password, {
+            secure,
+            rejectUnauthorized: params.rejectUnauthorized,
+        })
         this.startKeepalive()
     }
 
@@ -147,17 +150,18 @@ export class FtpProvider implements FileSystemProvider {
 
     async delete(paths: string[], ctx: DeleteContext): Promise<DeleteResult> {
         let deleted = 0
+        const errors: Array<{file: string; reason: string}> = []
         for (const p of paths) {
             if (ctx.cancellation.cancelled) break
             const remotePath = this.stripPrefix(p)
             try {
                 await this.deleteRecursive(remotePath, ctx)
                 deleted++
-            } catch {
-                // continue
+            } catch (err: any) {
+                errors.push({file: remotePath, reason: err.message ?? String(err)})
             }
         }
-        return {ok: true as const, deleted}
+        return {ok: true as const, deleted, errors: errors.length ? errors : undefined}
     }
 
     async mkdir(dirPath: string): Promise<MkdirResult> {

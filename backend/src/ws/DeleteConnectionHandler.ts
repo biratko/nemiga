@@ -42,6 +42,7 @@ export class DeleteConnectionHandler extends BaseConnectionHandler {
 
         let provider
         try {
+            for (const p of paths) this.router.resolve(p)
             provider = this.router.resolve(paths[0])
         } catch (err) {
             if (err instanceof PathGuardError) { this.sendPathGuardError(err); return }

@@ -50,7 +50,7 @@ export type MoveResult =
     | {ok: false; error: ErrorInfo}
 
 export type DeleteResult =
-    | {ok: true; deleted: number}
+    | {ok: true; deleted: number; errors?: Array<{file: string; reason: string}>}
     | {ok: false; error: ErrorInfo}
 
 export type MkdirResult =

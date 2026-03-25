@@ -18,7 +18,7 @@ export class NotifyServer {
     attach(server: Server): void {
         server.on('upgrade', (req: IncomingMessage, socket: Duplex, head: Buffer) => {
             const {pathname} = new URL(req.url!, `http://${req.headers.host}`)
-            if (pathname !== '/ws/notify') return
+            if (pathname !== '/ws/notify') { socket.destroy(); return }
             this.wss.handleUpgrade(req, socket, head, (ws) => {
                 this.wss.emit('connection', ws, req)
             })

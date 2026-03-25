@@ -319,6 +319,8 @@ function copyPath() {
   navigator.clipboard.writeText(currentPath.value)
 }
 
+const isWindowsPath = computed(() => /^[A-Za-z]:/.test(currentPath.value.replace(/^\//, '')))
+
 const pathSegments = computed(() => {
   const full = currentPath.value
   if (full.startsWith('ftp://')) {
@@ -340,9 +342,13 @@ const pathSegments = computed(() => {
     return segments
   }
   const parts = full.split('/').filter(Boolean)
+  const isWindows = parts.length > 0 && /^[A-Za-z]:$/.test(parts[0])
+  const prefix = isWindows ? parts[0] + '/' : '/'
   return parts.map((name, i) => ({
     name,
-    path: '/' + parts.slice(0, i + 1).join('/'),
+    path: i === 0 && isWindows
+      ? prefix
+      : prefix + parts.slice(isWindows ? 1 : 0, i + 1).join('/'),
   }))
 })
 
@@ -378,7 +384,7 @@ onBeforeUnmount(() => {
     <slot name="before-header" />
     <div class="panel-header">
       <DriveSelector :currentPath="currentPath" @navigate="loadDirectory" @open-ftp="emit('open-ftp')" />
-      <span class="path"><span class="path-sep">/</span><template v-for="(seg, i) in pathSegments" :key="seg.path"><span class="path-segment" @click.stop="loadDirectory(seg.path)">{{ seg.name }}</span><span v-if="i < pathSegments.length - 1" class="path-sep">/</span></template></span>
+      <span class="path"><span v-if="!isWindowsPath" class="path-sep">/</span><template v-for="(seg, i) in pathSegments" :key="seg.path"><span class="path-segment" @click.stop="loadDirectory(seg.path)">{{ seg.name }}</span><span v-if="i < pathSegments.length - 1" class="path-sep">/</span></template></span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
@@ -497,8 +503,8 @@ onBeforeUnmount(() => {
 .panel-header {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 1px 8px;
+  gap: 8px;
+  padding: 1px 8px 1px 0;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   font-size: 12px;
