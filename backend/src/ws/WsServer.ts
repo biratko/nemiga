@@ -44,7 +44,6 @@ export class WsServer {
             }
 
             if (!factory) {
-                socket.destroy()
                 return
             }
 
@@ -57,7 +56,14 @@ export class WsServer {
                         ws.on('message', (data) => {
                             let msg
                             try { msg = JSON.parse(data.toString()) } catch { return }
-                            handler.handleMessage(msg)
+                            try {
+                                handler.handleMessage(msg)
+                            } catch (err) {
+                                if (ws.readyState === ws.OPEN) {
+                                    ws.send(JSON.stringify({event: 'error', error: {code: 'INTERNAL', message: err instanceof Error ? err.message : String(err)}}))
+                                    ws.close()
+                                }
+                            }
                         })
 
                         ws.on('close', () => {
