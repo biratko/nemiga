@@ -1,6 +1,4 @@
 import type {Readable, Writable} from 'node:stream'
-import {pipeline} from 'node:stream/promises'
-import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import os from 'node:os'
 import type {FileSystemProvider, OperationContext, MoveContext, DeleteContext, CopyOptions} from '../providers/FileSystemProvider.js'
@@ -206,16 +204,26 @@ export class FtpProvider implements FileSystemProvider {
         try {
             entries = await this.run(() => this.adapter.list(src))
         } catch {
-            // It's a file — use temp file as intermediary (basic-ftp can't do concurrent streams)
+            entries = []
+        }
+
+        // Some FTP servers return the file itself when LIST is called on a file path.
+        // Detect this: if the listing has a single file entry matching the source basename,
+        // treat src as a file rather than a directory.
+        const srcBasename = path.posix.basename(src)
+        const isSelfListing = entries.length === 1 &&
+            entries[0].type === 'file' &&
+            path.posix.basename(entries[0].name) === srcBasename
+
+        if (entries.length === 0 || isSelfListing) {
+            // It's a file — download to a local temp file, then upload.
+            // This must use the atomic downloadToFile/uploadFromFile adapter methods so each
+            // FTP transfer fully completes (including the control-channel 226 response) before
+            // the next one starts, avoiding "task while another one is still running" errors.
             const tmpPath = path.join(os.tmpdir(), `tacom-ftp-${Date.now()}-${Math.random().toString(36).slice(2)}`)
             try {
-                const readable = await this.run(() => this.adapter.createReadStream(src))
-                const fileWrite = fs.createWriteStream(tmpPath)
-                await pipeline(readable, fileWrite)
-
-                const fileRead = fs.createReadStream(tmpPath)
-                const writable = await this.run(() => this.adapter.createWriteStream(dest))
-                await pipeline(fileRead, writable)
+                await this.run(() => this.adapter.downloadToFile(src, tmpPath))
+                await this.run(() => this.adapter.uploadFromFile(tmpPath, dest))
             } finally {
                 await fsPromises.unlink(tmpPath).catch(() => {})
             }

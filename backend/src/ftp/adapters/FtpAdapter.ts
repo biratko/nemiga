@@ -11,6 +11,10 @@ export interface FtpAdapter {
     deleteDir(remotePath: string): Promise<void>
     createReadStream(remotePath: string): Promise<Readable>
     createWriteStream(remotePath: string): Promise<Writable>
+    /** Download remote file to a local path, awaiting the full FTP transfer. */
+    downloadToFile(remotePath: string, localPath: string): Promise<void>
+    /** Upload a local file to a remote path, awaiting the full FTP transfer. */
+    uploadFromFile(localPath: string, remotePath: string): Promise<void>
     pwd(): Promise<string>
     isConnected(): boolean
     sendNoop(): Promise<void>

@@ -36,6 +36,14 @@ export class SftpAdapter implements FtpAdapter {
         return stream
     }
 
+    async downloadToFile(remotePath: string, localPath: string): Promise<void> {
+        await this.client.fastGet(remotePath, localPath)
+    }
+
+    async uploadFromFile(localPath: string, remotePath: string): Promise<void> {
+        await this.client.fastPut(localPath, remotePath)
+    }
+
     async pwd(): Promise<string> { return this.client.cwd() }
     isConnected(): boolean { return this.connected }
     async sendNoop(): Promise<void> { await this.client.stat('/') }

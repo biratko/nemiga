@@ -39,9 +39,52 @@ export class BasicFtpAdapter implements FtpAdapter {
     }
 
     async createWriteStream(remotePath: string): Promise<Writable> {
+        // Use a PassThrough as the data conduit for basic-ftp's uploadFrom.
+        // basic-ftp reads from the PassThrough; callers write to it.
+        //
+        // The challenge: pipeline() resolves as soon as the last byte flows through
+        // the PassThrough, but basic-ftp may still be exchanging the 226 Transfer
+        // Complete response on the control channel. Any FTP command issued before
+        // that response is received will fail with "task still running".
+        //
+        // Fix: wrap the PassThrough in a custom Writable whose final() callback
+        // waits for the uploadFrom promise before signalling completion.
         const passThrough = new PassThrough()
-        this.client.uploadFrom(passThrough, remotePath).catch((err) => { passThrough.destroy(err) })
-        return passThrough
+        const {Writable} = await import('node:stream')
+        let uploadDoneResolve!: () => void
+        let uploadDoneReject!: (err: Error) => void
+        const uploadDonePromise = new Promise<void>((res, rej) => {
+            uploadDoneResolve = res
+            uploadDoneReject = rej
+        })
+        this.client.uploadFrom(passThrough, remotePath)
+            .then(() => uploadDoneResolve())
+            .catch((err: Error) => {
+                passThrough.destroy(err)
+                uploadDoneReject(err)
+            })
+        const wrapper = new Writable({
+            write(chunk, _enc, cb) {
+                if (!passThrough.write(chunk)) {
+                    passThrough.once('drain', cb)
+                } else {
+                    cb()
+                }
+            },
+            final(cb) {
+                passThrough.end()
+                uploadDonePromise.then(() => cb(), cb)
+            },
+        })
+        return wrapper
+    }
+
+    async downloadToFile(remotePath: string, localPath: string): Promise<void> {
+        await this.client.downloadTo(localPath, remotePath)
+    }
+
+    async uploadFromFile(localPath: string, remotePath: string): Promise<void> {
+        await this.client.uploadFrom(localPath, remotePath)
     }
 
     async pwd(): Promise<string> { return this.client.pwd() }
