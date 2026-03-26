@@ -1,6 +1,7 @@
 import { ref, type Ref } from 'vue'
 import type { FSEntry } from '@/types/fs'
 import { joinPath } from '@/utils/path'
+import { useActionMap } from '@/composables/useActionMap'
 
 export interface DragData {
   sources: string[]
@@ -14,8 +15,8 @@ const MIME = 'application/x-tacom-drag'
 const dropTargetPanelId = ref<string | null>(null)
 const dropTargetEntry = ref<FSEntry | 'parent' | null>(null)
 
-/** Ctrl state captured from mousedown before drag starts */
-const ctrlOnMouseDown = ref(false)
+/** Copy modifier state captured from mousedown before drag starts */
+const copyModifierOnMouseDown = ref(false)
 
 export function useDragAndDrop(
   panelId: string,
@@ -23,9 +24,11 @@ export function useDragAndDrop(
   selectedEntries: Ref<FSEntry[]>,
   cursorEntry: Ref<FSEntry | null>,
 ) {
+  const {isModifierActive} = useActionMap()
+
   function onMouseDown(e: MouseEvent) {
     if (e.button === 0) {
-      ctrlOnMouseDown.value = e.ctrlKey
+      copyModifierOnMouseDown.value = isModifierActive('drag.copy', e)
     }
   }
 
@@ -44,7 +47,7 @@ export function useDragAndDrop(
 
     e.dataTransfer.setData(MIME, JSON.stringify(data))
     e.dataTransfer.effectAllowed = 'copyMove'
-    e.dataTransfer.dropEffect = ctrlOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
 
     // Custom drag image with count
     if (entries.length > 1) {
@@ -64,7 +67,7 @@ export function useDragAndDrop(
     if (!canDrop) return
 
     e.preventDefault()
-    e.dataTransfer.dropEffect = ctrlOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
     dropTargetPanelId.value = panelId
     dropTargetEntry.value = entry
   }
@@ -72,7 +75,7 @@ export function useDragAndDrop(
   function onDragOverPanel(e: DragEvent) {
     if (!e.dataTransfer || !e.dataTransfer.types.includes(MIME)) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = ctrlOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
 
     // Only set panel as target if no specific entry target is set
     if (dropTargetPanelId.value !== panelId) {
@@ -107,7 +110,7 @@ export function useDragAndDrop(
     if (!raw) return null
 
     const data: DragData = JSON.parse(raw)
-    const op = ctrlOnMouseDown.value ? 'copy' : 'move'
+    const op = copyModifierOnMouseDown.value ? 'copy' : 'move'
 
     let destination: string
     if (entry === 'parent') {
