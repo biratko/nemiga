@@ -36,7 +36,7 @@ export type {
     WsDeleteClientCommand,
 } from './ws-types.js'
 
-export type {KeyBindings, SettingsState} from './settings-types.js'
+export type {SettingsState} from './settings-types.js'
 
 export type {PanelSort, TabMode, TabState, PanelTabsState, WorkspaceState} from './workspace-types.js'
 
