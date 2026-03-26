@@ -6,6 +6,7 @@ const props = defineProps<{
     showToolbar: boolean
     viewer: string
     editor: string
+    terminal: string
     platform: string
     toastDurationMs: number
 }>()
@@ -16,6 +17,7 @@ const emit = defineEmits<{
     'update:showToolbar': [value: boolean]
     'update:viewer': [value: string]
     'update:editor': [value: string]
+    'update:terminal': [value: string]
     'update:toastDurationMs': [value: number]
 }>()
 </script>
@@ -45,6 +47,10 @@ const emit = defineEmits<{
         <div class="field-row">
             <label class="field-label">Editor</label>
             <input type="text" :value="editor" @input="emit('update:editor', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'notepad' : '/usr/bin/subl'" />
+        </div>
+        <div class="field-row">
+            <label class="field-label">Terminal</label>
+            <input type="text" :value="terminal" @input="emit('update:terminal', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'wt' : 'x-terminal-emulator'" />
         </div>
     </div>
     <div class="section">

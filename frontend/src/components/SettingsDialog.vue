@@ -50,6 +50,7 @@ const followSymlinks = ref(props.initialSettings?.followSymlinks ?? true)
 const showToolbar = ref(props.initialSettings?.showToolbar ?? true)
 const editor = ref(props.initialSettings?.editor ?? '')
 const viewer = ref(props.initialSettings?.viewer ?? '')
+const terminal = ref(props.initialSettings?.terminal ?? '')
 const fileTypes = ref<Record<string, FileTypeOverride>>({...(props.initialSettings?.fileTypes ?? {})})
 const toastDurationMs = ref(props.initialSettings?.toastDurationMs ?? 3000)
 const platform = ref('linux')
@@ -83,6 +84,7 @@ async function save() {
         theme: theme.value,
         editor: editor.value,
         viewer: viewer.value,
+        terminal: terminal.value,
         fileTypes: fileTypes.value,
         toastDurationMs: toastDurationMs.value,
     }
@@ -137,12 +139,14 @@ async function save() {
                             :show-toolbar="showToolbar"
                             :viewer="viewer"
                             :editor="editor"
+                            :terminal="terminal"
                             :platform="platform"
                             @update:show-hidden="showHidden = $event"
                             @update:follow-symlinks="followSymlinks = $event"
                             @update:show-toolbar="showToolbar = $event"
                             @update:viewer="viewer = $event"
                             @update:editor="editor = $event"
+                            @update:terminal="terminal = $event"
                             :toast-duration-ms="toastDurationMs"
                             @update:toast-duration-ms="toastDurationMs = $event"
                         />
