@@ -9,6 +9,7 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop'
 import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useNotifyWs } from '@/composables/useNotifyWs'
+import { useDirectoryWatcher } from '@/composables/useDirectoryWatcher'
 import { commitFtpArchive } from '@/api/fs'
 import ContextMenu from '@/components/ContextMenu.vue'
 import DriveSelector from '@/components/DriveSelector.vue'
@@ -125,6 +126,7 @@ function onCommitErrorResolved() {
 }
 
 const {on: onNotify} = useNotifyWs()
+const {watch: watchDir, unwatch: unwatchDir, onChange: onDirChange} = useDirectoryWatcher()
 onNotify('ftp-archive-lost', (data: any) => {
   const ftpPath = data?.ftpPath as string | undefined
   if (!ftpPath || !currentPath.value.startsWith(ftpPath)) return
@@ -196,6 +198,8 @@ const visibleSlice = computed(() =>
     .map((entry, i) => ({ entry, globalIndex: startIndex.value + i }))
 )
 
+let watchedPath: string | null = null
+
 async function loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]; cursorName?: string}) {
   const ok = await rawLoad(path)
   if (ok) {
@@ -212,9 +216,22 @@ async function loadDirectory(path: string, restoreState?: {cursorIndex?: number;
         scrollToIndex(cursorIndex.value)
       }
     }
+    // Update directory watcher
+    const newPath = currentPath.value
+    if (watchedPath !== newPath) {
+      if (watchedPath) unwatchDir(watchedPath)
+      watchDir(newPath)
+      watchedPath = newPath
+    }
     emit('navigate', currentPath.value)
   }
 }
+
+const offDirChange = onDirChange((changedPath) => {
+  if (changedPath === currentPath.value) {
+    rawLoad(currentPath.value)
+  }
+})
 
 function setSort(key: 'name' | 'size' | 'modified') {
   rawSetSort(key)
@@ -368,6 +385,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('mouseup', onDocumentMouseUp)
+  if (watchedPath) unwatchDir(watchedPath)
+  offDirChange()
 })
 </script>
 

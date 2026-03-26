@@ -18,6 +18,7 @@ import {FtpArchiveCache} from './ftp/FtpArchiveCache.js'
 import type {ArchiveCacheOptions} from './ftp/FtpArchiveCache.js'
 import {FtpArchiveProvider} from './ftp/FtpArchiveProvider.js'
 import {NotifyServer} from './ws/NotifyServer.js'
+import {WatchServer} from './ws/WatchServer.js'
 import {ftpRouter} from './api/ftp.js'
 import {ftpArchiveRouter} from './api/ftp-archive.js'
 import {FtpConnectionsService} from './ftp/FtpConnectionsService.js'
@@ -54,6 +55,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
     const ftpConnectionsService = new FtpConnectionsService(storage)
+    const watchServer = new WatchServer(router)
     const wsServer = new WsServer(router, settingsService)
 
     const apiRouters = [
@@ -71,10 +73,12 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const server = http.createServer(app)
     wsServer.attach(server)
     notifyServer.attach(server)
+    watchServer.attach(server)
 
     async function cleanup() {
         wsServer.close()
         notifyServer.close()
+        watchServer.close()
         await ftpArchiveCache.cleanup().catch(() => {})
         await archiveProvider.cleanup().catch(() => {})
         await ftpSessionManager.cleanup().catch(() => {})
