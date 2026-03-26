@@ -224,6 +224,7 @@ async function doConnect() {
                         class="saved-item"
                         :class="{active: selectedId === conn.id}"
                         @click="selectConnection(conn)"
+                        @dblclick="selectConnection(conn); doConnect()"
                     >
                         <span class="saved-item-name" :title="conn.name">{{ conn.name }}</span>
                         <button class="btn-delete" @click.stop="doDelete(conn.id)" title="Delete">&times;</button>
