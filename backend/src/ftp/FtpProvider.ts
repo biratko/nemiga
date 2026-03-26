@@ -89,16 +89,8 @@ export class FtpProvider implements FileSystemProvider {
                 ? await this.run(() => this.adapter.pwd())
                 : remotePath
             const fullPath = `${this.pathPrefix}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`
-            const result: FSEntry[] = []
-            if (remotePath !== '/') {
-                result.push({
-                    name: '..', type: 'directory', size: 0,
-                    modified: '', permissions: '', extension: null,
-                    hidden: false, symlink_target: null,
-                })
-            }
-            result.push(...entries)
-            return {ok: true as const, path: fullPath, entries: result}
+            const filtered = entries.filter(e => e.name !== '.' && e.name !== '..')
+            return {ok: true as const, path: fullPath, entries: filtered}
         } catch (err: any) {
             return {ok: false as const, error: {code: ErrorCode.INTERNAL, message: err.message}}
         }
