@@ -10,6 +10,7 @@ import {makeGetSettingsHandler, makePutSettingsHandler} from './settings.js'
 import {makeFsOpenHandler, makeFsViewHandler} from './fs-open.js'
 import {makeFsRenameHandler} from './fs-rename.js'
 import {makeFsRootsHandler} from './fs-roots.js'
+import {ftpConnectionsRouter} from './ftp-connections.js'
 
 export function fsRouter(providerRouter: ProviderRouter, settingsService: SettingsService, pathGuard: PathGuard): Router {
     const router = Router()
@@ -47,6 +48,8 @@ export function settingsRouter(settingsService: SettingsService): Router {
 
     return router
 }
+
+export {ftpConnectionsRouter}
 
 export const apiErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     if (err instanceof PathGuardError) {

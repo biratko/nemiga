@@ -20,6 +20,8 @@ import {FtpArchiveProvider} from './ftp/FtpArchiveProvider.js'
 import {NotifyServer} from './ws/NotifyServer.js'
 import {ftpRouter} from './api/ftp.js'
 import {ftpArchiveRouter} from './api/ftp-archive.js'
+import {FtpConnectionsService} from './ftp/FtpConnectionsService.js'
+import {ftpConnectionsRouter} from './api/ftp-connections.js'
 
 export interface AppInstance {
     server: http.Server
@@ -51,6 +53,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const storage = new JsonFileStorage()
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
+    const ftpConnectionsService = new FtpConnectionsService(storage)
     const wsServer = new WsServer(router, settingsService)
 
     const apiRouters = [
@@ -59,6 +62,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
         settingsRouter(settingsService),
         ftpRouter(ftpSessionManager),
         ftpArchiveRouter(ftpArchiveCache, ftpSessionManager),
+        ftpConnectionsRouter(ftpConnectionsService),
     ]
     const app = createExpressApp(apiRouters, apiErrorHandler, {
         frontendDist: options.frontendDist,
