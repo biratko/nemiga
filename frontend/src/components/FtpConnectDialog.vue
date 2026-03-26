@@ -1,6 +1,15 @@
 <script setup lang="ts">
-import {ref, watch} from 'vue'
+import {ref, watch, onMounted} from 'vue'
 import {ftpConnect} from '@/api/ftp'
+import {
+    listConnections,
+    createConnection,
+    updateConnection,
+    deleteConnection,
+    getConnectParams,
+    type SavedFtpConnectionDto,
+    type SaveConnectionInput,
+} from '@/api/ftp-connections'
 import ModalDialog from './ModalDialog.vue'
 
 const emit = defineEmits<{
@@ -8,6 +17,13 @@ const emit = defineEmits<{
     connected: [path: string]
 }>()
 
+// Saved connections state
+const savedConnections = ref<SavedFtpConnectionDto[]>([])
+const selectedId = ref<string | null>(null)
+const listLoading = ref(false)
+const listError = ref('')
+
+// Form fields
 const protocol = ref<'ftp' | 'ftps' | 'sftp'>('ftp')
 const host = ref('')
 const port = ref(21)
@@ -15,18 +31,120 @@ const username = ref('anonymous')
 const password = ref('')
 const rejectUnauthorized = ref(true)
 const remotePath = ref('/')
+const connectionName = ref('')
+const savePassword = ref(false)
+
+// Action state
 const connecting = ref(false)
+const saving = ref(false)
 const errorMsg = ref('')
 
 watch(protocol, (val) => {
     port.value = val === 'sftp' ? 22 : 21
 })
 
+onMounted(async () => {
+    await loadConnections()
+})
+
+async function loadConnections() {
+    listLoading.value = true
+    listError.value = ''
+    try {
+        savedConnections.value = await listConnections()
+    } catch (err: any) {
+        listError.value = err.message ?? 'Failed to load connections'
+    } finally {
+        listLoading.value = false
+    }
+}
+
+function selectConnection(conn: SavedFtpConnectionDto) {
+    selectedId.value = conn.id
+    connectionName.value = conn.name
+    protocol.value = conn.protocol
+    host.value = conn.host
+    port.value = conn.port
+    username.value = conn.username
+    password.value = ''
+    savePassword.value = conn.hasPassword
+    rejectUnauthorized.value = conn.rejectUnauthorized ?? true
+    remotePath.value = conn.remotePath
+    errorMsg.value = ''
+}
+
+function newConnection() {
+    selectedId.value = null
+    connectionName.value = ''
+    protocol.value = 'ftp'
+    host.value = ''
+    port.value = 21
+    username.value = 'anonymous'
+    password.value = ''
+    savePassword.value = false
+    rejectUnauthorized.value = true
+    remotePath.value = '/'
+    errorMsg.value = ''
+}
+
+function getInput(): SaveConnectionInput {
+    return {
+        name: connectionName.value.trim() || undefined,
+        protocol: protocol.value,
+        host: host.value.trim(),
+        port: port.value,
+        username: username.value.trim(),
+        password: savePassword.value ? password.value : undefined,
+        rejectUnauthorized: protocol.value === 'ftps' ? rejectUnauthorized.value : undefined,
+        remotePath: remotePath.value.trim() || '/',
+    }
+}
+
+async function doSave() {
+    if (!host.value.trim()) {
+        errorMsg.value = 'Host is required'
+        return
+    }
+    if (!username.value.trim()) {
+        errorMsg.value = 'Username is required'
+        return
+    }
+    saving.value = true
+    errorMsg.value = ''
+    try {
+        const input = getInput()
+        if (selectedId.value) {
+            const updated = await updateConnection(selectedId.value, input)
+            const idx = savedConnections.value.findIndex(c => c.id === updated.id)
+            if (idx !== -1) savedConnections.value[idx] = updated
+        } else {
+            const created = await createConnection(input)
+            savedConnections.value.push(created)
+            selectedId.value = created.id
+        }
+    } catch (err: any) {
+        errorMsg.value = err.message ?? 'Failed to save'
+    } finally {
+        saving.value = false
+    }
+}
+
+async function doDelete(id: string) {
+    if (!confirm('Delete this saved connection?')) return
+    try {
+        await deleteConnection(id)
+        savedConnections.value = savedConnections.value.filter(c => c.id !== id)
+        if (selectedId.value === id) newConnection()
+    } catch (err: any) {
+        errorMsg.value = err.message ?? 'Failed to delete'
+    }
+}
+
 function onKeydown(e: KeyboardEvent) {
     e.stopPropagation()
     if (e.key === 'Escape') {
         emit('close')
-    } else if (e.key === 'Enter' && !connecting.value) {
+    } else if (e.key === 'Enter' && !connecting.value && !saving.value) {
         doConnect()
     }
 }
@@ -43,12 +161,27 @@ async function doConnect() {
     connecting.value = true
     errorMsg.value = ''
 
+    let connectPassword = password.value
+
+    // If connecting from saved connection with saved password and user didn't type one,
+    // fetch the stored password
+    if (selectedId.value && !connectPassword && savePassword.value) {
+        try {
+            const params = await getConnectParams(selectedId.value)
+            connectPassword = params.password ?? ''
+        } catch (err: any) {
+            errorMsg.value = err.message ?? 'Failed to get connection params'
+            connecting.value = false
+            return
+        }
+    }
+
     const result = await ftpConnect({
         protocol: protocol.value,
         host: host.value.trim(),
         port: port.value,
         username: username.value.trim(),
-        password: password.value,
+        password: connectPassword,
         rejectUnauthorized: protocol.value === 'ftps' ? rejectUnauthorized.value : undefined,
     })
 
@@ -65,59 +198,210 @@ async function doConnect() {
 </script>
 
 <template>
-    <ModalDialog title="FTP Connection" @keydown="onKeydown">
-        <div class="ftp-form">
-            <div class="form-row">
-                <label>Protocol</label>
-                <select v-model="protocol">
-                    <option value="ftp">FTP</option>
-                    <option value="ftps">FTPS</option>
-                    <option value="sftp">SFTP</option>
-                </select>
+    <ModalDialog title="FTP Connection" @keydown="onKeydown" wide>
+        <div class="ftp-dialog-layout">
+            <div class="saved-list">
+                <div class="saved-list-header">
+                    <span>Saved</span>
+                    <button class="btn-new" @click="newConnection" title="New connection">+</button>
+                </div>
+                <div v-if="listLoading" class="saved-list-status">Loading...</div>
+                <div v-else-if="listError" class="saved-list-status error">{{ listError }}</div>
+                <div v-else-if="savedConnections.length === 0" class="saved-list-status">No saved connections</div>
+                <div v-else class="saved-list-items">
+                    <div
+                        v-for="conn in savedConnections"
+                        :key="conn.id"
+                        class="saved-item"
+                        :class="{active: selectedId === conn.id}"
+                        @click="selectConnection(conn)"
+                    >
+                        <span class="saved-item-name" :title="conn.name">{{ conn.name }}</span>
+                        <button class="btn-delete" @click.stop="doDelete(conn.id)" title="Delete">&times;</button>
+                    </div>
+                </div>
             </div>
-            <div class="form-row">
-                <label>Host</label>
-                <input v-model="host" type="text" placeholder="example.com" />
-            </div>
-            <div class="form-row">
-                <label>Port</label>
-                <input v-model.number="port" type="number" min="1" max="65535" />
-            </div>
-            <div class="form-row">
-                <label>Username</label>
-                <input v-model="username" type="text" />
-            </div>
-            <div class="form-row">
-                <label>Password</label>
-                <input v-model="password" type="password" />
-            </div>
-            <div v-if="protocol === 'ftps'" class="form-row">
-                <label>Verify TLS</label>
-                <label class="checkbox-label">
-                    <input v-model="rejectUnauthorized" type="checkbox" />
-                    Verify server certificate
-                </label>
-            </div>
-            <div class="form-row">
-                <label>Remote path</label>
-                <input v-model="remotePath" type="text" placeholder="/" />
-            </div>
-            <div v-if="errorMsg" class="form-error">{{ errorMsg }}</div>
-            <div class="form-actions">
-                <button @click="emit('close')" :disabled="connecting">Cancel</button>
-                <button @click="doConnect" :disabled="connecting" class="primary">
-                    {{ connecting ? 'Connecting...' : 'Connect' }}
-                </button>
+            <div class="ftp-form">
+                <div class="form-row">
+                    <label>Name</label>
+                    <input v-model="connectionName" type="text" placeholder="user@host:port" />
+                </div>
+                <div class="form-row">
+                    <label>Protocol</label>
+                    <select v-model="protocol">
+                        <option value="ftp">FTP</option>
+                        <option value="ftps">FTPS</option>
+                        <option value="sftp">SFTP</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label>Host</label>
+                    <input v-model="host" type="text" placeholder="example.com" />
+                </div>
+                <div class="form-row">
+                    <label>Port</label>
+                    <input v-model.number="port" type="number" min="1" max="65535" />
+                </div>
+                <div class="form-row">
+                    <label>Username</label>
+                    <input v-model="username" type="text" />
+                </div>
+                <div class="form-row">
+                    <label>Password</label>
+                    <div class="password-group">
+                        <input v-model="password" type="password" />
+                        <label class="checkbox-label">
+                            <input v-model="savePassword" type="checkbox" />
+                            Save
+                        </label>
+                    </div>
+                </div>
+                <div v-if="protocol === 'ftps'" class="form-row">
+                    <label>Verify TLS</label>
+                    <label class="checkbox-label">
+                        <input v-model="rejectUnauthorized" type="checkbox" />
+                        Verify server certificate
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>Remote path</label>
+                    <input v-model="remotePath" type="text" placeholder="/" />
+                </div>
+                <div v-if="errorMsg" class="form-error">{{ errorMsg }}</div>
+                <div class="form-actions">
+                    <button @click="emit('close')" :disabled="connecting || saving">Cancel</button>
+                    <button @click="doSave" :disabled="connecting || saving">
+                        {{ saving ? 'Saving...' : 'Save' }}
+                    </button>
+                    <button @click="doConnect" :disabled="connecting || saving" class="primary">
+                        {{ connecting ? 'Connecting...' : 'Connect' }}
+                    </button>
+                </div>
             </div>
         </div>
     </ModalDialog>
 </template>
 
 <style scoped>
+.ftp-dialog-layout {
+    display: flex;
+    gap: 12px;
+    min-height: 280px;
+    padding: 12px;
+}
+
+.saved-list {
+    width: 160px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--border);
+    padding-right: 12px;
+}
+
+.saved-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+}
+
+.btn-new {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.btn-new:hover {
+    background: var(--bg-row-hover);
+}
+
+.saved-list-status {
+    font-size: 11px;
+    color: var(--text-secondary);
+    padding: 4px 0;
+}
+
+.saved-list-status.error {
+    color: #e55;
+}
+
+.saved-list-items {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.saved-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 4px;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 2px;
+}
+
+.saved-item:hover {
+    background: var(--bg-row-hover);
+}
+
+.saved-item.active {
+    background: var(--accent);
+    color: #fff;
+}
+
+.saved-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn-delete {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    opacity: 0;
+}
+
+.saved-item:hover .btn-delete {
+    opacity: 1;
+}
+
+.saved-item.active .btn-delete {
+    color: #fff;
+    opacity: 0.7;
+}
+
+.saved-item.active .btn-delete:hover {
+    opacity: 1;
+}
+
 .ftp-form {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    flex: 1;
 }
 
 .form-row {
@@ -151,6 +435,28 @@ async function doConnect() {
     border-color: var(--accent);
 }
 
+.password-group {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.password-group input[type="password"] {
+    flex: 1;
+    padding: 3px 6px;
+    font-size: 12px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    outline: none;
+    font-family: inherit;
+}
+
+.password-group input[type="password"]:focus {
+    border-color: var(--accent);
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;
@@ -158,6 +464,7 @@ async function doConnect() {
     font-size: 12px;
     color: var(--text-primary);
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .checkbox-label input[type="checkbox"] {
