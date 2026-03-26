@@ -39,7 +39,10 @@ const connecting = ref(false)
 const saving = ref(false)
 const errorMsg = ref('')
 
+// Only auto-set port when user changes protocol manually, not when loading saved connection
+const suppressPortWatch = ref(false)
 watch(protocol, (val) => {
+    if (suppressPortWatch.value) return
     port.value = val === 'sftp' ? 22 : 21
 })
 
@@ -62,9 +65,11 @@ async function loadConnections() {
 function selectConnection(conn: SavedFtpConnectionDto) {
     selectedId.value = conn.id
     connectionName.value = conn.name
+    suppressPortWatch.value = true
     protocol.value = conn.protocol
-    host.value = conn.host
     port.value = conn.port
+    suppressPortWatch.value = false
+    host.value = conn.host
     username.value = conn.username
     password.value = ''
     savePassword.value = conn.hasPassword
@@ -176,23 +181,27 @@ async function doConnect() {
         }
     }
 
-    const result = await ftpConnect({
-        protocol: protocol.value,
-        host: host.value.trim(),
-        port: port.value,
-        username: username.value.trim(),
-        password: connectPassword,
-        rejectUnauthorized: protocol.value === 'ftps' ? rejectUnauthorized.value : undefined,
-    })
+    try {
+        const result = await ftpConnect({
+            protocol: protocol.value,
+            host: host.value.trim(),
+            port: port.value,
+            username: username.value.trim(),
+            password: connectPassword,
+            rejectUnauthorized: protocol.value === 'ftps' ? rejectUnauthorized.value : undefined,
+        })
 
-    connecting.value = false
-
-    if (result.ok && result.sessionId) {
-        const rp = remotePath.value.trim() || '/'
-        const ftpPath = `ftp://${result.sessionId}@${host.value.trim()}${rp.startsWith('/') ? '' : '/'}${rp}`
-        emit('connected', ftpPath)
-    } else {
-        errorMsg.value = result.error?.message ?? 'Connection failed'
+        if (result.ok && result.sessionId) {
+            const rp = remotePath.value.trim() || '/'
+            const ftpPath = `ftp://${result.sessionId}@${host.value.trim()}${rp.startsWith('/') ? '' : '/'}${rp}`
+            emit('connected', ftpPath)
+        } else {
+            errorMsg.value = result.error?.message ?? 'Connection failed'
+        }
+    } catch (err: any) {
+        errorMsg.value = err.message ?? 'Connection failed'
+    } finally {
+        connecting.value = false
     }
 }
 </script>
