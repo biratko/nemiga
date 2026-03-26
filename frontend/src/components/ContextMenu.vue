@@ -62,6 +62,9 @@ onBeforeUnmount(() => {
     <div v-if="showPack" class="context-menu-item" @click="emit('select', 'pack', $event)">
         Pack to...
     </div>
+    <div class="context-menu-item" @click="emit('select', 'copy-path', $event)">
+      Copy path
+    </div>
   </div>
 </template>
 
