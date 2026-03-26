@@ -19,6 +19,8 @@ import {usePanelResize} from '@/composables/usePanelResize'
 import {useTheme} from '@/composables/useTheme'
 import {useNotifyWs} from '@/composables/useNotifyWs'
 import {joinPath} from '@/utils/path'
+import ToastContainer from '@/components/ToastContainer.vue'
+import {setToastDuration} from '@/composables/useToast'
 
 interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
@@ -224,6 +226,9 @@ function onSettingsClose(settings?: SettingsState) {
         if (settings.theme) {
             applyTheme(settings.theme)
         }
+        if (settings.toastDurationMs) {
+            setToastDuration(settings.toastDurationMs)
+        }
     }
 }
 
@@ -416,6 +421,9 @@ onMounted(async () => {
             keyBindings.value = currentSettings.value.keyBindings
         }
         initTheme(currentSettings.value.theme)
+        if (currentSettings.value.toastDurationMs) {
+            setToastDuration(currentSettings.value.toastDurationMs)
+        }
     } catch {
         initTheme()
     }
@@ -561,6 +569,7 @@ onUnmounted(() => {
             :initial-settings="currentSettings"
             @close="onSettingsClose"
         />
+        <ToastContainer />
     </div>
 </template>
 

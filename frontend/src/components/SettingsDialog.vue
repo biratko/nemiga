@@ -51,6 +51,7 @@ const showToolbar = ref(props.initialSettings?.showToolbar ?? true)
 const editor = ref(props.initialSettings?.editor ?? '')
 const viewer = ref(props.initialSettings?.viewer ?? '')
 const fileTypes = ref<Record<string, FileTypeOverride>>({...(props.initialSettings?.fileTypes ?? {})})
+const toastDurationMs = ref(props.initialSettings?.toastDurationMs ?? 3000)
 const platform = ref('linux')
 
 function onKeydown(e: KeyboardEvent) {
@@ -83,6 +84,7 @@ async function save() {
         editor: editor.value,
         viewer: viewer.value,
         fileTypes: fileTypes.value,
+        toastDurationMs: toastDurationMs.value,
     }
     localStorage.setItem('tacom-theme', theme.value)
     localStorage.setItem('tacom-zoom', String(zoom.value))
@@ -141,6 +143,8 @@ async function save() {
                             @update:show-toolbar="showToolbar = $event"
                             @update:viewer="viewer = $event"
                             @update:editor="editor = $event"
+                            :toast-duration-ms="toastDurationMs"
+                            @update:toast-duration-ms="toastDurationMs = $event"
                         />
                     </div>
                     <div class="dialog-footer">

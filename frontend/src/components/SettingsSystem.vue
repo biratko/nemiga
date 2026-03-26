@@ -7,6 +7,7 @@ const props = defineProps<{
     viewer: string
     editor: string
     platform: string
+    toastDurationMs: number
 }>()
 
 const emit = defineEmits<{
@@ -15,6 +16,7 @@ const emit = defineEmits<{
     'update:showToolbar': [value: boolean]
     'update:viewer': [value: string]
     'update:editor': [value: string]
+    'update:toastDurationMs': [value: number]
 }>()
 </script>
 
@@ -43,6 +45,21 @@ const emit = defineEmits<{
         <div class="field-row">
             <label class="field-label">Editor</label>
             <input type="text" :value="editor" @input="emit('update:editor', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'notepad' : '/usr/bin/subl'" />
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title">Notifications</div>
+        <div class="field-row">
+            <label class="field-label">Toast (sec)</label>
+            <input
+                type="number"
+                min="1"
+                max="30"
+                :value="toastDurationMs / 1000"
+                @input="emit('update:toastDurationMs', Math.round(Number(($event.target as HTMLInputElement).value) * 1000))"
+                class="field-input"
+                style="width: 60px; flex: none;"
+            />
         </div>
     </div>
 </template>

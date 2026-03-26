@@ -20,4 +20,5 @@ export interface SettingsState {
     viewer?: string
     showToolbar?: boolean
     fileTypes?: Record<string, FileTypeOverride>
+    toastDurationMs?: number
 }
