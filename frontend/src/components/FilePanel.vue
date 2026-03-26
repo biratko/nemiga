@@ -339,6 +339,24 @@ function copyPath() {
   navigator.clipboard.writeText(currentPath.value)
 }
 
+const isFtpPath = computed(() => currentPath.value.startsWith('ftp://'))
+
+async function openTerminal() {
+  try {
+    const res = await fetch('/api/fs/terminal', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({path: currentPath.value}),
+    })
+    const data = await res.json()
+    if (!data.ok) {
+      console.warn('Failed to open terminal:', data.error?.message)
+    }
+  } catch {
+    // best-effort
+  }
+}
+
 const isWindowsPath = computed(() => /^[A-Za-z]:/.test(currentPath.value.replace(/^\//, '')))
 
 const pathSegments = computed(() => {
@@ -411,6 +429,12 @@ onBeforeUnmount(() => {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+      </button>
+      <button class="open-terminal-btn" title="Open terminal" :disabled="isFtpPath" @click.stop="openTerminal">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 17 10 11 4 5"/>
+          <line x1="12" y1="19" x2="20" y2="19"/>
         </svg>
       </button>
     </div>
@@ -574,6 +598,33 @@ onBeforeUnmount(() => {
   opacity: 1;
   background: var(--bg-row-hover);
   border-color: var(--border);
+}
+
+.open-terminal-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.5;
+}
+
+.open-terminal-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: var(--bg-row-hover);
+  border-color: var(--border);
+}
+
+.open-terminal-btn:disabled {
+  opacity: 0.2;
+  cursor: default;
 }
 
 .panel-content {
