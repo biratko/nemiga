@@ -3,6 +3,7 @@ import {ref, computed, onMounted, onUnmounted} from 'vue'
 import {connectExtractWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {ExtractEvents} from '@/types/ws'
+import {showToast} from '@/composables/useToast'
 import ModalDialog from './ModalDialog.vue'
 
 const props = defineProps<{
@@ -51,9 +52,8 @@ function startExtract() {
     })
 
     wsHandle.onEvent('complete', (data) => {
-        filesDone.value = data.files_done
-        totalFiles.value = data.total_files
-        phase.value = 'done'
+        showToast(`Extracted ${data.files_done} file(s)`)
+        emit('close', true)
     })
 
     wsHandle.onEvent('error', (data) => {

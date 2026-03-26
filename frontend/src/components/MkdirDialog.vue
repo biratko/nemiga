@@ -3,6 +3,7 @@ import {ref, onMounted, onUnmounted, nextTick} from 'vue'
 import {connectMkdirWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {MkdirEvents} from '@/types/ws'
+import {showToast} from '@/composables/useToast'
 import ModalDialog from './ModalDialog.vue'
 
 const props = defineProps<{
@@ -62,7 +63,8 @@ function confirmMkdir() {
     wsHandle = connectMkdirWs()
 
     wsHandle.onEvent('complete', () => {
-        phase.value = 'done'
+        showToast(`Directory "${folderName.value}" created`)
+        emit('close', true)
     })
 
     wsHandle.onEvent('error', (data) => {

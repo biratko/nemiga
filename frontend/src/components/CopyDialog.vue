@@ -4,6 +4,7 @@ import {connectCopyWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {CopyEvents} from '@/types/ws'
 import {formatBytes} from '@/utils/format'
+import {showToast} from '@/composables/useToast'
 import ModalDialog from './ModalDialog.vue'
 
 const props = defineProps<{
@@ -80,6 +81,11 @@ onMounted(() => {
     })
 
     wsHandle.onEvent('complete', (data) => {
+        if (data.errors.length === 0) {
+            showToast(`Copied ${data.files_done} files (${formatBytes(data.bytes_copied)})`)
+            emit('close', true)
+            return
+        }
         done.value = true
         doneInfo.value = {
             files_done: data.files_done,

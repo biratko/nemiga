@@ -3,6 +3,8 @@ import {ref, computed, watch, onMounted, onUnmounted} from 'vue'
 import {connectPackWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {PackEvents} from '@/types/ws'
+import {showToast} from '@/composables/useToast'
+import {formatBytes} from '@/utils/format'
 import ModalDialog from './ModalDialog.vue'
 
 const FORMATS = [
@@ -86,6 +88,11 @@ function startPack() {
     })
 
     wsHandle.onEvent('complete', (data) => {
+        if (data.skipped === 0) {
+            showToast(`Packed ${data.files_done} file(s) (${formatBytes(data.archive_size)})`)
+            emit('close', true)
+            return
+        }
         filesDone.value = data.files_done
         totalFiles.value = data.total_files ?? 0
         archiveSize.value = data.archive_size

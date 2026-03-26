@@ -3,6 +3,7 @@ import {ref, onMounted, onUnmounted} from 'vue'
 import {connectDeleteWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {DeleteEvents} from '@/types/ws'
+import {showToast} from '@/composables/useToast'
 import ModalDialog from './ModalDialog.vue'
 
 const props = defineProps<{
@@ -58,8 +59,8 @@ function confirmDelete() {
     })
 
     wsHandle.onEvent('complete', (data) => {
-        deletedCount.value = data.deleted
-        phase.value = 'done'
+        showToast(`Deleted ${data.deleted} item(s)`)
+        emit('close', true)
     })
 
     wsHandle.onEvent('error', (data) => {
