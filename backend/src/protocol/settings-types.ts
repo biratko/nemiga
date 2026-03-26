@@ -18,6 +18,7 @@ export interface SettingsState {
     theme?: string
     editor?: string
     viewer?: string
+    terminal?: string
     showToolbar?: boolean
     fileTypes?: Record<string, FileTypeOverride>
     toastDurationMs?: number
