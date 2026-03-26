@@ -140,6 +140,9 @@ function handleContextMenuSelect(action: string, event: MouseEvent) {
     const entry = menuState.value.entry
     const fullPath = joinPath(currentPath.value, entry.name)
     emit('extract', fullPath, event.shiftKey)
+  } else if (action === 'copy-path' && menuState.value.entry) {
+    const fullPath = joinPath(currentPath.value, menuState.value.entry.name)
+    navigator.clipboard.writeText(fullPath)
   } else if (action === 'pack') {
     const sources: string[] = []
     if (selectedNames.value.size > 0) {
@@ -455,7 +458,7 @@ onBeforeUnmount(() => {
               hidden: entry.hidden,
               'drop-target': dropTargetPanelId === panelId && dropTargetEntry !== null && dropTargetEntry !== 'parent' && (dropTargetEntry as any).name === entry.name,
             }"
-            :draggable="true"
+            :draggable="renamingEntry !== entry.name"
             @mousedown.left="onMouseDown"
             @dragstart="onDragStart($event, entry)"
             @dragover="onDragOver($event, entry)"
