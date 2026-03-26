@@ -9,7 +9,8 @@ import MkdirDialog from './components/MkdirDialog.vue'
 import ExtractDialog from './components/ExtractDialog.vue'
 import PackDialog from './components/PackDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
-import type {KeyBindings, SettingsState} from '@/types/settings'
+import type {SettingsState} from '@/types/settings'
+import {useActionMap} from '@/composables/useActionMap'
 import type {PanelAPI} from '@/types/panel'
 import type {PanelSort, PanelState} from '@/types/workspace'
 import type {TabState, PanelTabsState} from '@/types/tabs'
@@ -61,13 +62,7 @@ onNotify('ftp-session-renewed', (data: any) => {
     if (rPath?.startsWith(prefix)) rightPanel.value?.loadDirectory(newPrefix + rPath.slice(prefix.length))
 })
 
-const keyBindings = ref<KeyBindings>({
-    cursorUp: 'ArrowUp',
-    cursorDown: 'ArrowDown',
-    navigateIn: 'ArrowRight',
-    navigateUp: 'ArrowLeft',
-    switchPanel: 'Tab',
-})
+const {matchAction, isModifierActive, load: loadActionMap} = useActionMap()
 
 const showSettings = ref(false)
 const showFtpConnect = ref<'left' | 'right' | null>(null)
@@ -220,9 +215,7 @@ function onSettingsClose(settings?: SettingsState) {
     showSettings.value = false
     if (settings) {
         currentSettings.value = settings
-        if (settings.keyBindings) {
-            keyBindings.value = settings.keyBindings
-        }
+        loadActionMap(settings.actionBindings, settings.modifiers)
         if (settings.theme) {
             applyTheme(settings.theme)
         }
@@ -318,98 +311,72 @@ function handleMousedown(e: MouseEvent) {
 function handleKeydown(e: KeyboardEvent) {
     if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || showInput.value) return
 
-    const b = keyBindings.value
+    const action = matchAction(e)
+    if (!action) return
+
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
 
-    if (e.altKey && e.code === 'KeyT') {
-        e.preventDefault()
-        panel?.createTab()
-        return
-    }
-    if (e.altKey && e.code === 'KeyW') {
-        e.preventDefault()
-        panel?.closeTab()
-        return
-    }
+    e.preventDefault()
 
-    if (e.key === b.switchPanel) {
-        e.preventDefault()
-        activePanel.value = activePanel.value === 'left' ? 'right' : 'left'
-        return
-    }
-    if (e.key === b.cursorUp) {
-        e.preventDefault()
-        panel?.setKeyboardActive(true)
-        panel?.moveCursorUp()
-        return
-    }
-    if (e.key === b.cursorDown) {
-        e.preventDefault()
-        panel?.setKeyboardActive(true)
-        panel?.moveCursorDown()
-        return
-    }
-    if (e.ctrlKey && (e.key === b.navigateIn || e.key === b.navigateUp)) {
-        e.preventDefault()
-        const entry = panel?.cursorEntry
-        if (entry?.type === 'directory') {
-            const opposite = activePanel.value === 'left' ? rightPanel.value : leftPanel.value
-            const dirPath = joinPath(panel!.currentPath, entry.name)
-            opposite?.loadDirectory(dirPath)
+    switch (action) {
+        case 'tab.new':
+            panel?.createTab()
+            break
+        case 'tab.close':
+            panel?.closeTab()
+            break
+        case 'panel.switch':
+            activePanel.value = activePanel.value === 'left' ? 'right' : 'left'
+            break
+        case 'cursor.up':
+            panel?.setKeyboardActive(true)
+            panel?.moveCursorUp()
+            break
+        case 'cursor.down':
+            panel?.setKeyboardActive(true)
+            panel?.moveCursorDown()
+            break
+        case 'navigate.in.opposite':
+        case 'navigate.up.opposite': {
+            const entry = panel?.cursorEntry
+            if (entry?.type === 'directory') {
+                const opposite = activePanel.value === 'left' ? rightPanel.value : leftPanel.value
+                const dirPath = joinPath(panel!.currentPath, entry.name)
+                opposite?.loadDirectory(dirPath)
+            }
+            break
         }
-        return
-    }
-    if (e.key === b.navigateIn || e.key === 'Enter') {
-        e.preventDefault()
-        panel?.enterCursor()
-        return
-    }
-    if (e.key === b.navigateUp || e.key === 'Backspace') {
-        e.preventDefault()
-        panel?.goUp()
-        return
-    }
-    if (e.key === 'Insert') {
-        e.preventDefault()
-        panel?.setKeyboardActive(true)
-        panel?.toggleCursorSelection()
-        return
-    }
-    if (e.key === 'F2') {
-        e.preventDefault()
-        if (panel?.currentPath.includes('::')) return
-        panel?.startRename()
-        return
-    }
-    if (e.key === 'F3') {
-        e.preventDefault()
-        openInViewer()
-        return
-    }
-    if (e.key === 'F4') {
-        e.preventDefault()
-        openInEditor()
-        return
-    }
-    if (e.key === 'F5') {
-        e.preventDefault()
-        startCopy()
-        return
-    }
-    if (e.key === 'F6') {
-        e.preventDefault()
-        startMove()
-        return
-    }
-    if (e.key === 'F7') {
-        e.preventDefault()
-        startMkdir()
-        return
-    }
-    if (e.key === 'F8' || e.key === 'Delete') {
-        e.preventDefault()
-        startDelete()
-        return
+        case 'navigate.in':
+            panel?.enterCursor()
+            break
+        case 'navigate.up':
+            panel?.goUp()
+            break
+        case 'select.toggle':
+            panel?.setKeyboardActive(true)
+            panel?.toggleCursorSelection()
+            break
+        case 'file.rename':
+            if (!panel?.currentPath.includes('::')) panel?.startRename()
+            break
+        case 'file.view':
+            openInViewer()
+            break
+        case 'file.edit':
+            openInEditor()
+            break
+        case 'file.copy':
+            startCopy()
+            break
+        case 'file.move':
+            startMove()
+            break
+        case 'dir.create':
+            startMkdir()
+            break
+        case 'file.delete':
+            startDelete()
+            break
     }
 }
 
@@ -417,9 +384,7 @@ onMounted(async () => {
     await loadWorkspace()
     try {
         currentSettings.value = await loadSettings()
-        if (currentSettings.value.keyBindings) {
-            keyBindings.value = currentSettings.value.keyBindings
-        }
+        loadActionMap(currentSettings.value.actionBindings, currentSettings.value.modifiers)
         initTheme(currentSettings.value.theme)
         if (currentSettings.value.toastDurationMs) {
             setToastDuration(currentSettings.value.toastDurationMs)
