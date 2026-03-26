@@ -125,6 +125,7 @@ function onCtxCloseOthers() {
                 }"
                 draggable="true"
                 @click="emit('activate', i)"
+                @mousedown.middle.prevent="tabs.length > 1 && emit('close', i)"
                 @contextmenu="onContextMenu($event, i)"
                 @dragstart="onDragStart($event, i)"
                 @dragover="onDragOver($event, i)"
