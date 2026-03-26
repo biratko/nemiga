@@ -50,7 +50,7 @@ const emit = defineEmits<{
         </div>
         <div class="field-row">
             <label class="field-label">Terminal</label>
-            <input type="text" :value="terminal" @input="emit('update:terminal', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'wt' : 'x-terminal-emulator'" />
+            <input type="text" :value="terminal" @input="emit('update:terminal', ($event.target as HTMLInputElement).value)" class="field-input" :placeholder="platform === 'win32' ? 'wt' : 'wt.exe -d %P'" />
         </div>
     </div>
     <div class="section">

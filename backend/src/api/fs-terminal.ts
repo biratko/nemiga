@@ -1,17 +1,22 @@
-import {spawn} from 'node:child_process'
+import {spawn, execSync} from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import which from 'which'
 import type {Request, Response} from 'express'
 import type {SettingsService} from '../settings/SettingsService.js'
 import type {PathGuard} from '../providers/pathGuard.js'
 import {ErrorCode} from '../protocol'
 import {fromPosix} from '../utils/platformPath.js'
 
-const DEFAULT_TERMINAL: Record<string, string> = {
-    win32: 'wt',
-    linux: 'x-terminal-emulator',
-    darwin: 'open -a Terminal',
+const isWSL = process.platform === 'linux' && (() => {
+    try { return execSync('cat /proc/sys/fs/binfmt_misc/WSLInterop 2>/dev/null', {stdio: ['ignore', 'pipe', 'ignore']}).length > 0 }
+    catch { return false }
+})()
+
+function getDefaultTerminal(): string {
+    if (isWSL) return 'wt.exe -d %P'
+    if (process.platform === 'win32') return 'wt'
+    if (process.platform === 'darwin') return 'open -a Terminal'
+    return 'x-terminal-emulator'
 }
 
 export function makeFsTerminalHandler(settingsService: SettingsService, pathGuard: PathGuard) {
@@ -50,36 +55,35 @@ export function makeFsTerminalHandler(settingsService: SettingsService, pathGuar
         }
 
         const settings = await settingsService.load()
-        const command = settings.terminal?.trim() || DEFAULT_TERMINAL[process.platform] || ''
+        const command = settings.terminal?.trim() || getDefaultTerminal()
 
         if (!command) {
             res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'terminal is not configured'}})
             return
         }
 
-        const parts = command.split(/\s+/)
+        // Support %P placeholder for directory path; if absent, use cwd
+        const hasPlaceholder = command.includes('%P')
+        const expanded = hasPlaceholder ? command.replace(/%P/g, dirPath) : command
+        const parts = expanded.split(/\s+/)
         const cmd = parts[0]
+        const args = parts.slice(1)
 
-        if (!resolveCommand(cmd)) {
-            res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: `terminal command not found: ${cmd}`}})
-            return
-        }
+        const spawnOpts: {cwd?: string; detached: boolean; stdio: 'ignore'} = {detached: process.platform !== 'win32', stdio: 'ignore'}
+        if (!hasPlaceholder) spawnOpts.cwd = dirPath
 
-        try {
-            const args = parts.slice(1)
-            const child = spawn(cmd, args, {cwd: dirPath, detached: process.platform !== 'win32', stdio: 'ignore'})
-            child.unref()
+        const child = spawn(cmd, args, spawnOpts)
+
+        const launched = await new Promise<boolean>(resolve => {
+            child.on('spawn', () => resolve(true))
+            child.on('error', () => resolve(false))
+        })
+        child.unref()
+
+        if (launched) {
             res.json({ok: true})
-        } catch {
-            res.json({ok: false, error: {code: ErrorCode.INTERNAL, message: 'failed to launch terminal'}})
+        } else {
+            res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: `failed to launch terminal: ${cmd}`}})
         }
-    }
-}
-
-function resolveCommand(cmd: string): string | null {
-    try {
-        return which.sync(cmd)
-    } catch {
-        return null
     }
 }
