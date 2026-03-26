@@ -84,8 +84,8 @@ export function eventToKey(e: KeyboardEvent): string | null {
     if (e.shiftKey) parts.push('Shift')
     if (e.altKey) parts.push('Alt')
 
-    // Normalize letter keys to uppercase for Alt+T style bindings
-    if (e.altKey && e.code.startsWith('Key')) {
+    // Normalize letter keys to uppercase for Ctrl+T / Alt+T style bindings
+    if ((e.ctrlKey || e.altKey) && e.code.startsWith('Key')) {
         parts.push(e.code.slice(3)) // "KeyT" → "T"
     } else {
         parts.push(key)

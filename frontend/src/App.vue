@@ -62,7 +62,7 @@ onNotify('ftp-session-renewed', (data: any) => {
     if (rPath?.startsWith(prefix)) rightPanel.value?.loadDirectory(newPrefix + rPath.slice(prefix.length))
 })
 
-const {matchAction, isModifierActive, load: loadActionMap} = useActionMap()
+const {matchAction, load: loadActionMap} = useActionMap()
 
 const showSettings = ref(false)
 const showFtpConnect = ref<'left' | 'right' | null>(null)
@@ -336,14 +336,18 @@ function handleKeydown(e: KeyboardEvent) {
             panel?.setKeyboardActive(true)
             panel?.moveCursorDown()
             break
-        case 'navigate.in.opposite':
-        case 'navigate.up.opposite': {
+        case 'navigate.in.opposite': {
             const entry = panel?.cursorEntry
             if (entry?.type === 'directory') {
                 const opposite = activePanel.value === 'left' ? rightPanel.value : leftPanel.value
                 const dirPath = joinPath(panel!.currentPath, entry.name)
                 opposite?.loadDirectory(dirPath)
             }
+            break
+        }
+        case 'navigate.up.opposite': {
+            const opposite = activePanel.value === 'left' ? rightPanel.value : leftPanel.value
+            opposite?.goUp()
             break
         }
         case 'navigate.in':
