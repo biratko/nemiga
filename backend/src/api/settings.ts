@@ -1,11 +1,11 @@
 import type {Request, Response} from 'express'
 import type {SettingsService} from '../settings/SettingsService.js'
-import type {SettingsState, KeyBindings, FileTypeOverride} from '../protocol/settings-types.js'
+import type {SettingsState, FileTypeOverride} from '../protocol/settings-types.js'
 import {ErrorCode} from '../protocol/errors.js'
 
 function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     const result: SettingsState = {}
-    const allowed = new Set(['showHidden', 'followSymlinks', 'keyBindings', 'theme', 'editor', 'viewer', 'showToolbar', 'fileTypes', 'toastDurationMs'])
+    const allowed = new Set(['showHidden', 'followSymlinks', 'theme', 'editor', 'viewer', 'terminal', 'showToolbar', 'fileTypes', 'toastDurationMs', 'actionBindings', 'modifiers'])
 
     for (const key of Object.keys(raw)) {
         if (!allowed.has(key)) return null
@@ -30,6 +30,10 @@ function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     if ('viewer' in raw) {
         if (raw.viewer !== undefined && typeof raw.viewer !== 'string') return null
         result.viewer = raw.viewer as string | undefined
+    }
+    if ('terminal' in raw) {
+        if (raw.terminal !== undefined && typeof raw.terminal !== 'string') return null
+        result.terminal = raw.terminal as string | undefined
     }
     if ('showToolbar' in raw) {
         if (typeof raw.showToolbar !== 'boolean') return null
@@ -56,16 +60,29 @@ function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
         }
         result.fileTypes = normalized
     }
-    if ('keyBindings' in raw) {
-        const kb = raw.keyBindings
-        if (typeof kb !== 'object' || kb === null) return null
-        const kbObj = kb as Record<string, unknown>
-        const kbKeys = ['cursorUp', 'cursorDown', 'navigateIn', 'navigateUp', 'switchPanel']
-        for (const k of Object.keys(kbObj)) {
-            if (!kbKeys.includes(k)) return null
-            if (typeof kbObj[k] !== 'string') return null
+    if ('actionBindings' in raw) {
+        const ab = raw.actionBindings
+        if (typeof ab !== 'object' || ab === null || Array.isArray(ab)) return null
+        const abObj = ab as Record<string, unknown>
+        for (const [key, val] of Object.entries(abObj)) {
+            if (typeof key !== 'string') return null
+            if (!Array.isArray(val)) return null
+            for (const v of val) {
+                if (typeof v !== 'string') return null
+            }
         }
-        result.keyBindings = kb as KeyBindings
+        result.actionBindings = ab as Record<string, string[]>
+    }
+    if ('modifiers' in raw) {
+        const m = raw.modifiers
+        if (typeof m !== 'object' || m === null || Array.isArray(m)) return null
+        const mObj = m as Record<string, unknown>
+        const validMods = new Set(['Ctrl', 'Shift', 'Alt'])
+        for (const [key, val] of Object.entries(mObj)) {
+            if (typeof key !== 'string') return null
+            if (typeof val !== 'string' || !validMods.has(val)) return null
+        }
+        result.modifiers = m as Record<string, string>
     }
     if ('toastDurationMs' in raw) {
         if (typeof raw.toastDurationMs !== 'number') return null
