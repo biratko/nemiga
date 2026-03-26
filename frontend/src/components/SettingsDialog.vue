@@ -5,7 +5,7 @@ import SettingsAppearance from './SettingsAppearance.vue'
 import SettingsKeyBindings from './SettingsKeyBindings.vue'
 import SettingsFileTypes from './SettingsFileTypes.vue'
 import SettingsSystem from './SettingsSystem.vue'
-import type {SettingsState, KeyBindings, FileTypeOverride} from '@/types/settings'
+import type {SettingsState, FileTypeOverride} from '@/types/settings'
 import {saveSettings} from '@/api/settings'
 import {getPlatform} from '@/api/platform'
 import {useTheme} from '@/composables/useTheme'
@@ -37,14 +37,8 @@ const theme = ref(currentTheme.value)
 const originalTheme = ref(currentTheme.value)
 const zoom = ref(parseFloat(document.documentElement.style.zoom) || 1)
 const originalZoom = ref(zoom.value)
-const bindings = ref<KeyBindings>({
-    cursorUp: 'ArrowUp',
-    cursorDown: 'ArrowDown',
-    navigateIn: 'ArrowRight',
-    navigateUp: 'ArrowLeft',
-    switchPanel: 'Tab',
-    ...props.initialSettings?.keyBindings,
-})
+const actionBindings = ref<Record<string, string[]>>({...(props.initialSettings?.actionBindings ?? {})})
+const modifierBindings = ref<Record<string, string>>({...(props.initialSettings?.modifiers ?? {})})
 const showHidden = ref(props.initialSettings?.showHidden ?? false)
 const followSymlinks = ref(props.initialSettings?.followSymlinks ?? true)
 const showToolbar = ref(props.initialSettings?.showToolbar ?? true)
@@ -80,7 +74,8 @@ async function save() {
         showHidden: showHidden.value,
         followSymlinks: followSymlinks.value,
         showToolbar: showToolbar.value,
-        keyBindings: {...bindings.value},
+        actionBindings: actionBindings.value,
+        modifiers: modifierBindings.value,
         theme: theme.value,
         editor: editor.value,
         viewer: viewer.value,
@@ -123,8 +118,10 @@ async function save() {
                         />
                         <SettingsKeyBindings
                             v-if="activeTab === 'keybindings'"
-                            :bindings="bindings"
-                            @update:bindings="bindings = $event"
+                            :action-bindings="actionBindings"
+                            :modifiers="modifierBindings"
+                            @update:action-bindings="actionBindings = $event"
+                            @update:modifiers="modifierBindings = $event"
                         />
                         <SettingsFileTypes
                             v-if="activeTab === 'filetypes'"
