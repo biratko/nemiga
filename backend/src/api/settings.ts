@@ -5,7 +5,7 @@ import {ErrorCode} from '../protocol/errors.js'
 
 function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     const result: SettingsState = {}
-    const allowed = new Set(['showHidden', 'followSymlinks', 'keyBindings', 'theme', 'editor', 'viewer', 'showToolbar', 'fileTypes'])
+    const allowed = new Set(['showHidden', 'followSymlinks', 'keyBindings', 'theme', 'editor', 'viewer', 'showToolbar', 'fileTypes', 'toastDurationMs'])
 
     for (const key of Object.keys(raw)) {
         if (!allowed.has(key)) return null
@@ -66,6 +66,12 @@ function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
             if (typeof kbObj[k] !== 'string') return null
         }
         result.keyBindings = kb as KeyBindings
+    }
+    if ('toastDurationMs' in raw) {
+        if (typeof raw.toastDurationMs !== 'number') return null
+        const ms = raw.toastDurationMs
+        if (ms < 1000 || ms > 30000) return null
+        result.toastDurationMs = ms
     }
 
     return result

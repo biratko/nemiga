@@ -19,6 +19,7 @@ function getDefaults(): SettingsState {
         viewer: '',
         showToolbar: true,
         fileTypes: {},
+        toastDurationMs: 3000,
     }
 }
 
