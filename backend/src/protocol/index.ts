@@ -50,3 +50,5 @@ export type {
     PutSettingsRequest,
     PutSettingsResponse,
 } from './api-types.js'
+
+export type {SavedFtpConnection, SavedFtpConnectionDto} from './ftp-connection-types.js'
