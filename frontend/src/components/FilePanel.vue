@@ -10,12 +10,12 @@ import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useNotifyWs } from '@/composables/useNotifyWs'
 import { useDirectoryWatcher } from '@/composables/useDirectoryWatcher'
-import { commitFtpArchive } from '@/api/fs'
+import { commitFtpArchive, fetchDirSize } from '@/api/fs'
 import ContextMenu from '@/components/ContextMenu.vue'
 import DriveSelector from '@/components/DriveSelector.vue'
 import FileIcon from '@/components/FileIcon.vue'
 import FtpArchiveCommitErrorDialog from '@/components/FtpArchiveCommitErrorDialog.vue'
-import { formatSize, formatDate } from '@/utils/format'
+import { formatSize, formatBytes, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 
 const props = defineProps<{
@@ -207,6 +207,7 @@ let watchedPath: string | null = null
 async function loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]; cursorName?: string}) {
   const ok = await rawLoad(path)
   if (ok) {
+    dirSizes.value = new Map()
     if (restoreState) {
       cursorIndex.value = restoreState.cursorIndex ?? 0
       selectedNames.value = new Set(restoreState.selectedNames ?? [])
@@ -329,6 +330,25 @@ function enterCursor() {
   if (entry) navigate(entry)
 }
 
+// Directory size calculation
+const dirSizes = ref<Map<string, number | 'loading'>>(new Map())
+
+async function calcDirSize() {
+  const entry = cursorEntry.value
+  if (!entry || entry.type !== 'directory') return
+  const fullPath = joinPath(currentPath.value, entry.name)
+  if (dirSizes.value.has(entry.name)) return
+  dirSizes.value.set(entry.name, 'loading')
+  dirSizes.value = new Map(dirSizes.value) // trigger reactivity
+  const size = await fetchDirSize(fullPath)
+  if (size !== null) {
+    dirSizes.value.set(entry.name, size)
+  } else {
+    dirSizes.value.delete(entry.name)
+  }
+  dirSizes.value = new Map(dirSizes.value)
+}
+
 function handleDrop(e: DragEvent, entry: FSEntry | 'parent' | null) {
   const result = onDrop(e, entry)
   if (result) emit('drop', result.op, result.sources, result.destination)
@@ -391,7 +411,7 @@ const pathSegments = computed(() => {
   }))
 })
 
-defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent })
+defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize })
 
 function onDocumentMouseUp(e: MouseEvent) {
   if (e.button === 2) onPanelRightMouseUp()
@@ -510,7 +530,7 @@ onBeforeUnmount(() => {
                 <span v-else>{{ entry.name }}</span>
               </span>
             </td>
-            <td class="col-size">{{ formatSize(entry) }}</td>
+            <td class="col-size">{{ entry.type === 'directory' ? (dirSizes.get(entry.name) === 'loading' ? '...' : typeof dirSizes.get(entry.name) === 'number' ? formatBytes(dirSizes.get(entry.name) as number) : '&lt;DIR&gt;') : formatSize(entry) }}</td>
             <td class="col-date">{{ formatDate(entry.modified) }}</td>
           </tr>
           <tr v-if="bottomSpacerHeight > 0" :style="{ height: bottomSpacerHeight + 'px' }"></tr>
@@ -774,4 +794,5 @@ onBeforeUnmount(() => {
   outline: none;
   height: 100%;
 }
+
 </style>

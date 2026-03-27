@@ -11,6 +11,7 @@ export const ACTION_DEFAULTS: Record<string, string[]> = {
     'navigate.up.opposite':   ['Ctrl+ArrowLeft'],
     'panel.switch':           ['Tab'],
     'select.toggle':          ['Insert'],
+    'dir.size':               [' '],
 
     // File operations
     'file.rename':            ['F2'],
@@ -43,6 +44,7 @@ export const ACTION_CATEGORIES: {title: string; actions: {id: string; label: str
             {id: 'navigate.up.opposite', label: 'Go Up in Opposite Panel'},
             {id: 'panel.switch', label: 'Switch Panel'},
             {id: 'select.toggle', label: 'Toggle Selection'},
+            {id: 'dir.size', label: 'Calculate Dir Size'},
         ],
     },
     {

@@ -369,6 +369,9 @@ function handleKeydown(e: KeyboardEvent) {
             panel?.setKeyboardActive(true)
             panel?.toggleCursorSelection()
             break
+        case 'dir.size':
+            panel?.calcDirSize()
+            break
         case 'file.rename':
             if (!panel?.currentPath.includes('::')) panel?.startRename()
             break

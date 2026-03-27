@@ -62,6 +62,17 @@ export async function fetchMimeDefaults(): Promise<Record<string, {mime: string;
     }
 }
 
+export async function fetchDirSize(path: string): Promise<number | null> {
+    try {
+        const res = await fetch(`/api/fs/dir-size?path=${encodeURIComponent(path)}`)
+        if (!res.ok) return null
+        const data = await res.json()
+        return data.ok ? data.size : null
+    } catch {
+        return null
+    }
+}
+
 export async function fetchRoots(): Promise<DriveEntry[]> {
     try {
         const res = await fetch('/api/fs/roots')

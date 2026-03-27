@@ -202,6 +202,7 @@ defineExpose({
     toggleCursorSelection() { filePanelRef.value?.toggleCursorSelection() },
     setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
     startRename() { filePanelRef.value?.startRename() },
+    calcDirSize() { filePanelRef.value?.calcDirSize() },
     createTab,
     closeTab() { closeTab(activeTabIndex.value) },
 })

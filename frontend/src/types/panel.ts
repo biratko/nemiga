@@ -14,4 +14,5 @@ export interface PanelAPI {
     toggleCursorSelection(): void
     setKeyboardActive(val: boolean): void
     startRename(): void
+    calcDirSize(): void
 }
