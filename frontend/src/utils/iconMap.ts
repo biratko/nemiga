@@ -25,7 +25,7 @@ const FILENAME_PATTERNS: { pattern: RegExp; icon: string }[] = [
   { pattern: /^LICENSE\..+$/, icon: 'certificate' },
 ]
 
-const EXTENSION_MAP = new Map<string, string>([
+export const EXTENSION_MAP = new Map<string, string>([
   ['ts', 'typescript'],
   ['js', 'javascript'],
   ['vue', 'vue'],
