@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import {ref, computed} from 'vue'
+import {ref, computed, onMounted} from 'vue'
 import type {FileTypeOverride} from '@/types/settings'
 import {EXTENSION_MAP} from '@/utils/iconMap'
+import {fetchMimeDefaults} from '@/api/fs'
 
 const props = defineProps<{
     fileTypes: Record<string, FileTypeOverride>
@@ -15,17 +16,24 @@ const emit = defineEmits<{
 const newExt = ref('')
 const newIcon = ref('')
 const newProgram = ref('')
+const mimeDefaults = ref<Record<string, {mime: string; program: string}>>({})
+
+onMounted(async () => {
+    mimeDefaults.value = await fetchMimeDefaults()
+})
 
 /** Merged list: built-in extensions + user-added ones */
 const rows = computed(() => {
-    const result: {ext: string; icon: string; program: string; builtin: boolean}[] = []
+    const result: {ext: string; icon: string; program: string; systemProgram: string; builtin: boolean}[] = []
     // Built-in from EXTENSION_MAP
     for (const [ext, iconName] of EXTENSION_MAP) {
         const override = props.fileTypes[ext]
+        const systemProg = mimeDefaults.value[ext]?.program ?? ''
         result.push({
             ext,
             icon: override?.icon ?? iconName,
             program: override?.program ?? '',
+            systemProgram: systemProg,
             builtin: true,
         })
     }
@@ -37,6 +45,7 @@ const rows = computed(() => {
                 ext,
                 icon: override.icon ?? '',
                 program: override.program ?? '',
+                systemProgram: '',
                 builtin: false,
             })
         }
@@ -102,7 +111,7 @@ function updateField(ext: string, field: 'icon' | 'program', value: string) {
                     <tr v-for="row in rows" :key="row.ext" :class="{overridden: row.ext in fileTypes}">
                         <td class="ext-cell">.{{ row.ext }}</td>
                         <td><input type="text" :value="row.icon" @input="updateField(row.ext, 'icon', ($event.target as HTMLInputElement).value)" class="ft-input icon-input" /></td>
-                        <td><input type="text" :value="row.program" @input="updateField(row.ext, 'program', ($event.target as HTMLInputElement).value)" class="ft-input" :placeholder="platform === 'win32' ? 'program.exe' : '/usr/bin/...'" /></td>
+                        <td><input type="text" :value="row.program" @input="updateField(row.ext, 'program', ($event.target as HTMLInputElement).value)" class="ft-input" :placeholder="row.systemProgram || (platform === 'win32' ? 'program.exe' : '/usr/bin/...')" /></td>
                         <td>
                             <button v-if="!row.builtin" class="remove-btn" @click="removeRow(row.ext)">Remove</button>
                             <button v-else-if="row.ext in fileTypes" class="remove-btn" @click="removeRow(row.ext)">Reset</button>

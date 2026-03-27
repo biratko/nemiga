@@ -23,6 +23,7 @@ const emit = defineEmits<{
     extract: [archivePath: string, shiftKey: boolean]
     pack: [sourcePaths: string[], shiftKey: boolean]
     'open-ftp': []
+    'open-file': [path: string]
 }>()
 
 const tabs = ref<TabState[]>([...props.tabsState.tabs])
@@ -228,6 +229,7 @@ defineExpose({
             @extract="onExtract"
             @pack="onPack"
             @open-ftp="emit('open-ftp')"
+            @open-file="(path: string) => emit('open-file', path)"
         >
             <template #before-header>
                 <TabBar

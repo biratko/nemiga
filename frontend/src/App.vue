@@ -20,6 +20,7 @@ import {usePanelResize} from '@/composables/usePanelResize'
 import {useTheme} from '@/composables/useTheme'
 import {useNotifyWs} from '@/composables/useNotifyWs'
 import {joinPath} from '@/utils/path'
+import {launchFile} from '@/api/fs'
 import ToastContainer from '@/components/ToastContainer.vue'
 import {setToastDuration} from '@/composables/useToast'
 
@@ -165,6 +166,14 @@ async function launchExternal(endpoint: string) {
 
 function openInEditor() { launchExternal('/api/fs/open') }
 function openInViewer() { launchExternal('/api/fs/view') }
+
+async function onOpenFile(path: string) {
+    try {
+        await launchFile(path)
+    } catch {
+        // best-effort
+    }
+}
 
 function onCopyClose(copied: boolean) {
     const destination = copyOp.value?.destination
@@ -441,6 +450,7 @@ onUnmounted(() => {
                     @extract="startExtract"
                     @pack="startPack"
                     @open-ftp="showFtpConnect = 'left'"
+                    @open-file="onOpenFile"
                 />
                 <div
                     class="panel-splitter"
@@ -478,6 +488,7 @@ onUnmounted(() => {
                     @extract="startExtract"
                     @pack="startPack"
                     @open-ftp="showFtpConnect = 'right'"
+                    @open-file="onOpenFile"
                 />
             </template>
         </div>

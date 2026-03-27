@@ -8,6 +8,8 @@ import {makeFsListHandler} from './fs-list.js'
 import {makeGetWorkspaceHandler, makePutWorkspaceHandler} from './workspace.js'
 import {makeGetSettingsHandler, makePutSettingsHandler} from './settings.js'
 import {makeFsOpenHandler, makeFsViewHandler} from './fs-open.js'
+import {makeFsLaunchHandler} from './fs-launch.js'
+import {makeMimeDefaultsHandler} from './mime-defaults.js'
 import {makeFsTerminalHandler} from './fs-terminal.js'
 import {makeFsRenameHandler} from './fs-rename.js'
 import {makeFsRootsHandler} from './fs-roots.js'
@@ -22,6 +24,8 @@ export function fsRouter(providerRouter: ProviderRouter, settingsService: Settin
     router.post('/fs/rename', makeFsRenameHandler(providerRouter))
     router.get('/fs/roots', makeFsRootsHandler(pathGuard))
     router.post('/fs/terminal', makeFsTerminalHandler(settingsService, pathGuard))
+    router.post('/fs/launch', makeFsLaunchHandler(settingsService, pathGuard))
+    router.get('/fs/mime-defaults', makeMimeDefaultsHandler())
 
     router.get('/archive/extensions', (_req, res) => {
         res.json({ok: true, extensions: providerRouter.getArchiveExtensions()})

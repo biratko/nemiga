@@ -42,6 +42,26 @@ export function downloadFtpArchiveTemp(ftpPath: string): void {
     a.click()
 }
 
+export async function launchFile(path: string): Promise<{ok: boolean; error?: {code: string; message: string}}> {
+    const res = await fetch('/api/fs/launch', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({path}),
+    })
+    return res.json()
+}
+
+export async function fetchMimeDefaults(): Promise<Record<string, {mime: string; program: string}>> {
+    try {
+        const res = await fetch('/api/fs/mime-defaults')
+        if (!res.ok) return {}
+        const data = await res.json()
+        return data.ok ? data.defaults : {}
+    } catch {
+        return {}
+    }
+}
+
 export async function fetchRoots(): Promise<DriveEntry[]> {
     try {
         const res = await fetch('/api/fs/roots')

@@ -38,6 +38,7 @@ const emit = defineEmits<{
   extract: [archivePath: string, shiftKey: boolean]
   pack: [sourcePaths: string[], shiftKey: boolean]
   'open-ftp': []
+  'open-file': [path: string]
 }>()
 
 const panelContentRef = ref<HTMLElement | null>(null)
@@ -259,6 +260,8 @@ async function navigate(entry: FSEntry) {
     }
     await maybeCommitFtpArchive(target)
     loadDirectory(target)
+  } else {
+    emit('open-file', joinPath(currentPath.value, entry.name))
   }
 }
 
@@ -323,9 +326,7 @@ function enterCursor() {
     return
   }
   const entry = sortedEntries.value[cursorIndex.value - 1]
-  if (entry?.type === 'directory' || entry?.isArchive) {
-    navigate(entry)
-  }
+  if (entry) navigate(entry)
 }
 
 function handleDrop(e: DragEvent, entry: FSEntry | 'parent' | null) {
