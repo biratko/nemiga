@@ -411,6 +411,28 @@ const pathSegments = computed(() => {
   }))
 })
 
+// Status bar stats
+const statusBarStats = computed(() => {
+  const all = sortedEntries.value
+  const total = all.length
+  const selectedCount = selectedNames.value.size
+
+  let totalSize = 0
+  let selectedSize = 0
+
+  for (const entry of all) {
+    const size = entry.type === 'directory'
+      ? (typeof dirSizes.value.get(entry.name) === 'number' ? dirSizes.value.get(entry.name) as number : 0)
+      : entry.size
+    totalSize += size
+    if (selectedNames.value.has(entry.name)) {
+      selectedSize += size
+    }
+  }
+
+  return { selectedCount, total, selectedSize, totalSize }
+})
+
 defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize })
 
 function onDocumentMouseUp(e: MouseEvent) {
@@ -553,6 +575,10 @@ onBeforeUnmount(() => {
       :session-dead="commitErrorState.sessionDead"
       @resolved="onCommitErrorResolved"
     />
+    <div class="panel-statusbar">
+      <span class="status-files">{{ statusBarStats.selectedCount }}/{{ statusBarStats.total }}</span>
+      <span class="status-size">{{ formatBytes(statusBarStats.selectedSize) }}/{{ formatBytes(statusBarStats.totalSize) }}</span>
+    </div>
   </div>
 </template>
 
@@ -795,4 +821,15 @@ onBeforeUnmount(() => {
   height: 100%;
 }
 
+.panel-statusbar {
+  display: flex;
+  justify-content: space-between;
+  padding: 1px 8px;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  background: var(--bg-header);
+  white-space: nowrap;
+  user-select: none;
+}
 </style>
