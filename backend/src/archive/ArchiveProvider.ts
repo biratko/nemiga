@@ -1,4 +1,6 @@
 import fs from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
 import type {FileSystemProvider, OperationContext, MoveContext, DeleteContext, CopyOptions} from '../providers/FileSystemProvider.js'
 import type {ListResult, CopyResult, MoveResult, DeleteResult, MkdirResult, RenameResult, FSEntry} from '../protocol/fs-types.js'
 import {ErrorCode} from '../protocol'
@@ -168,7 +170,7 @@ export class ArchiveProvider implements FileSystemProvider {
         if (!srcIsArchive && destIsArchive) {
             return this.addToArchive(sources, destination, ctx)
         }
-        return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Archive-to-archive copy not yet supported'}}
+        return this.copyBetweenArchives(sources, destination, ctx)
     }
 
     private async extractFromArchive(sources: string[], destination: string, ctx: OperationContext): Promise<CopyResult> {
@@ -241,6 +243,80 @@ export class ArchiveProvider implements FileSystemProvider {
         }
     }
 
+    private async copyBetweenArchives(sources: string[], destination: string, ctx: OperationContext): Promise<CopyResult> {
+        let tmpDir: string | undefined
+        try {
+            // Resolve sources
+            const resolved = await Promise.all(sources.map(s => this.resolveChain(s)))
+            const srcArchivePath = resolved[0].archivePath
+            if (resolved.some(p => p.archivePath !== srcArchivePath)) {
+                return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'All sources must be from the same archive'}}
+            }
+
+            const srcAdapter = this.findAdapter(srcArchivePath)
+            if (!srcAdapter) {
+                return {ok: false, error: {code: ErrorCode.INTERNAL, message: `No adapter for archive: ${srcArchivePath}`}}
+            }
+
+            // Extract sources to temp directory
+            tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nemiga-a2a-'))
+            const innerPaths = resolved.map(p => stripSlashes(p.innerPath))
+
+            const extractResult = await srcAdapter.extract(srcArchivePath, innerPaths, tmpDir, {
+                onProgress: (info) => {
+                    ctx.progress.report({
+                        copied_bytes: info.bytesWritten,
+                        current_file: info.currentFile,
+                        files_done: info.filesDone,
+                    })
+                },
+                cancelled: () => ctx.cancellation.cancelled,
+            })
+
+            if (ctx.cancellation.cancelled) {
+                return {ok: true, files_done: extractResult.filesDone, bytes_copied: extractResult.bytesWritten, errors: []}
+            }
+
+            // Resolve destination
+            const {archivePath: destArchivePath, innerPath: destInnerPath} = await this.resolveChain(destination)
+            const destAdapter = this.findAdapter(destArchivePath)
+            if (!destAdapter) {
+                return {ok: false, error: {code: ErrorCode.INTERNAL, message: `No adapter for archive: ${destArchivePath}`}}
+            }
+
+            // Collect extracted file paths
+            const extractedPaths = innerPaths.map(p => {
+                const baseName = p.includes('/') ? p.split('/').pop()! : p
+                return path.join(tmpDir!, baseName)
+            })
+
+            // Add to destination archive
+            const addResult = await destAdapter.add(destArchivePath, stripSlashes(destInnerPath), extractedPaths, {
+                onProgress: (info) => {
+                    ctx.progress.report({
+                        copied_bytes: extractResult.bytesWritten + info.bytesWritten,
+                        current_file: info.currentFile,
+                        files_done: extractResult.filesDone + info.filesDone,
+                    })
+                },
+                cancelled: () => ctx.cancellation.cancelled,
+            })
+
+            return {
+                ok: true,
+                files_done: extractResult.filesDone + addResult.filesDone,
+                bytes_copied: extractResult.bytesWritten + addResult.bytesWritten,
+                errors: [],
+            }
+        } catch (err: any) {
+            return {ok: false, error: {code: ErrorCode.INTERNAL, message: `Archive-to-archive copy failed: ${err.message}`}}
+        } finally {
+            if (tmpDir) {
+                await fs.rm(tmpDir, {recursive: true, force: true}).catch(() => {})
+            }
+        }
+    }
+
     async move(sources: string[], destination: string, ctx: MoveContext): Promise<MoveResult> {
         const destIsArchive = isArchivePath(destination)
         const srcIsArchive = isArchivePath(sources[0])
@@ -251,7 +327,7 @@ export class ArchiveProvider implements FileSystemProvider {
         if (!srcIsArchive && destIsArchive) {
             return this.moveToArchive(sources, destination, ctx)
         }
-        return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Archive-to-archive move not yet supported'}}
+        return this.moveBetweenArchives(sources, destination, ctx)
     }
 
     private async moveFromArchive(sources: string[], destination: string, ctx: MoveContext): Promise<MoveResult> {
@@ -287,6 +363,24 @@ export class ArchiveProvider implements FileSystemProvider {
         for (const src of sources) {
             await fsp.rm(src, {recursive: true, force: true})
         }
+
+        return {ok: true, files_done: copyResult.files_done, errors: copyResult.errors}
+    }
+
+    private async moveBetweenArchives(sources: string[], destination: string, ctx: MoveContext): Promise<MoveResult> {
+        const copyResult = await this.copyBetweenArchives(sources, destination, {
+            progress: {report: (info) => ctx.progress.report({current_file: info.current_file ?? '', files_done: info.files_done ?? 0})},
+            confirm: ctx.confirm,
+            cancellation: ctx.cancellation,
+        })
+        if (!copyResult.ok) return {ok: false, error: copyResult.error}
+
+        // Delete from source archive
+        const deleteResult = await this.delete(sources, {
+            progress: {report: () => {}},
+            cancellation: ctx.cancellation,
+        })
+        if (!deleteResult.ok) return {ok: false, error: deleteResult.error}
 
         return {ok: true, files_done: copyResult.files_done, errors: copyResult.errors}
     }
