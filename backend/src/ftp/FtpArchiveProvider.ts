@@ -10,6 +10,7 @@ import type {ListResult, CopyResult, MoveResult, DeleteResult, MkdirResult, Rena
 import type {ArchiveProvider} from '../archive/ArchiveProvider.js'
 import type {FtpArchiveCache} from './FtpArchiveCache.js'
 import type {FtpSessionManager} from './FtpSessionManager.js'
+import type {FtpProvider} from './FtpProvider.js'
 import {isFtpPath, extractFtpSessionId} from '../providers/ProviderRouter.js'
 
 export function splitFtpArchivePath(p: string): {ftpPart: string; innerPart: string} {
@@ -67,6 +68,11 @@ export class FtpArchiveProvider implements FileSystemProvider {
     }
 
     async copy(sources: string[], destination: string, ctx: OperationContext, options: CopyOptions): Promise<CopyResult> {
+        // FTP archive → plain FTP: extract to temp, then upload to FTP
+        if (isFtpPath(destination) && !destination.includes('::')) {
+            return this.copyArchiveToFtp(sources, destination, ctx)
+        }
+
         const temps: string[] = []
         try {
             const localDest = await this.toLocal(destination, temps)
@@ -81,7 +87,70 @@ export class FtpArchiveProvider implements FileSystemProvider {
         }
     }
 
+    private async copyArchiveToFtp(sources: string[], destination: string, ctx: OperationContext): Promise<CopyResult> {
+        const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nemiga-xfer-'))
+        try {
+            // Convert FTP archive sources to local archive paths
+            const localSources = await Promise.all(sources.map(async (s) => {
+                const {ftpPart, innerPart} = splitFtpArchivePath(s)
+                const localArchive = await this.cache.getLocalPath(ftpPart)
+                return localArchive + '::' + innerPart
+            }))
+
+            // Extract from archive to local temp dir
+            const extractResult = await this.archiveProvider.copy(localSources, tmpDir, ctx)
+            if (!extractResult.ok) return extractResult
+
+            // Upload extracted files to FTP destination
+            const sessionId = extractFtpSessionId(destination)
+            const ftpProvider = this.sessions.get(sessionId)
+            if (!ftpProvider) throw new Error(`FTP session not found: ${sessionId}`)
+
+            await this.uploadDirToFtp(tmpDir, destination, ftpProvider, ctx)
+            return extractResult
+        } finally {
+            await fs.rm(tmpDir, {recursive: true, force: true}).catch(() => {})
+        }
+    }
+
+    private async uploadDirToFtp(localDir: string, ftpDest: string, provider: FtpProvider, ctx: OperationContext): Promise<void> {
+        const entries = await fs.readdir(localDir, {withFileTypes: true})
+        for (const entry of entries) {
+            if (ctx.cancellation.cancelled) break
+            const localPath = path.join(localDir, entry.name)
+            const remoteDest = ftpDest.endsWith('/') ? ftpDest + entry.name : ftpDest + '/' + entry.name
+            if (entry.isDirectory()) {
+                await provider.mkdir(remoteDest)
+                await this.uploadDirToFtp(localPath, remoteDest, provider, ctx)
+            } else {
+                const readable = fsSync.createReadStream(localPath)
+                const writable = await provider.createWriteStream(remoteDest)
+                await pipeline(readable, writable)
+            }
+        }
+    }
+
     async move(sources: string[], destination: string, ctx: MoveContext): Promise<MoveResult> {
+        // FTP archive → plain FTP: extract to temp, upload, then delete from archive
+        if (isFtpPath(destination) && !destination.includes('::')) {
+            const copyCtx: OperationContext = {
+                progress: {report: (info) => ctx.progress.report({current_file: (info as any).current_file ?? '', files_done: (info as any).files_done ?? 0})},
+                confirm: ctx.confirm,
+                cancellation: ctx.cancellation,
+            }
+            const copyResult = await this.copyArchiveToFtp(sources, destination, copyCtx)
+            if (!copyResult.ok) return copyResult
+
+            if (!ctx.cancellation.cancelled) {
+                const deleteResult = await this.delete(sources, {
+                    progress: {report: () => {}},
+                    cancellation: ctx.cancellation,
+                })
+                if (!deleteResult.ok) return deleteResult
+            }
+            return {ok: true, files_done: copyResult.files_done, errors: copyResult.errors}
+        }
+
         const temps: string[] = []
         try {
             const localDest = await this.toLocal(destination, temps)

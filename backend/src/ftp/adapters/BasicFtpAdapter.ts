@@ -63,6 +63,7 @@ export class BasicFtpAdapter implements FtpAdapter {
                 downloadDonePromise.then(() => cb(), cb)
             },
         })
+        passThrough.on('error', (err) => wrapper.destroy(err))
         passThrough.pipe(wrapper)
         return wrapper
     }
@@ -105,6 +106,7 @@ export class BasicFtpAdapter implements FtpAdapter {
                 uploadDonePromise.then(() => cb(), cb)
             },
         })
+        passThrough.on('error', (err) => wrapper.destroy(err))
         return wrapper
     }
 
