@@ -15,7 +15,10 @@ const menuEl = ref<HTMLElement | null>(null)
 const highlightIndex = ref(0)
 const dropdownStyle = ref({ top: '0px', left: '0px' })
 
+const isFtp = computed(() => props.currentPath.startsWith('ftp://'))
+
 const currentDrive = computed(() => {
+    if (isFtp.value) return null
     const fsPath = props.currentPath.split('::')[0]
     let best: DriveEntry | null = null
     let bestLen = -1
@@ -106,9 +109,9 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="drive-selector" ref="wrapperEl">
-        <button class="drive-btn" :title="currentDrive?.name ?? 'Drives'" @click.stop="toggle">
+        <button class="drive-btn" :title="isFtp ? 'FTP' : currentDrive?.name ?? 'Drives'" @click.stop="toggle">
             <span class="drive-icon" v-html="driveIconRaw" />
-            <span class="drive-label">{{ currentDrive?.name ?? 'Drive' }}</span>
+            <span class="drive-label">{{ isFtp ? 'FTP' : currentDrive?.name ?? 'Drive' }}</span>
             <span class="drive-chevron">▾</span>
         </button>
         <div
