@@ -134,7 +134,7 @@ export class SevenZipAdapter implements CreatableAdapter {
 
         // Use 7z to extract specific files to a temp directory, then move them
         // We extract to a temp dir first to handle the renaming (basename extraction)
-        const tmpDir = destDir + '/.tacom-extract-' + crypto.randomUUID()
+        const tmpDir = destDir + '/.nemiga-extract-' + crypto.randomUUID()
         try {
             const archiveNames = toExtract.map(e => e.archiveName)
             await run7z(['x', '-y', `-o${tmpDir}`, archivePath, ...archiveNames])

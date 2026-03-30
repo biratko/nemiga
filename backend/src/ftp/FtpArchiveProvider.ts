@@ -55,7 +55,7 @@ export class FtpArchiveProvider implements FileSystemProvider {
             const sessionId = extractFtpSessionId(p)
             const provider = this.sessions.get(sessionId)
             if (!provider) throw new Error(`FTP session not found: ${sessionId}`)
-            const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'tacom-xfer-'))
+            const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'nemiga-xfer-'))
             const tmpFile = path.join(tmpDir, path.posix.basename(p))
             const readable = await provider.createReadStream(p)
             const writable = fsSync.createWriteStream(tmpFile)

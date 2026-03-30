@@ -13,7 +13,7 @@ export async function createWith7z(
     sourcePaths: string[],
     options: PackOptions,
 ): Promise<{filesDone: number; bytesWritten: number; skipped: number}> {
-    const tmpDir = path.dirname(archivePath) + '/.tacom-pack-' + crypto.randomUUID()
+    const tmpDir = path.dirname(archivePath) + '/.nemiga-pack-' + crypto.randomUUID()
 
     try {
         // Collect all files for progress tracking

@@ -117,7 +117,7 @@ describe('FTP Archive Tests', () => {
       })
       await seedFiles(ftpServer.rootDir, { 'test.zip': zipBuf })
 
-      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'tacom-test-'))
+      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'nemiga-test-'))
       try {
         const ftpArchivePath = `ftp://${sessionId}@${ftpServer.host}/test.zip`
         const result = await ftpArchiveProvider.copy(
@@ -162,7 +162,7 @@ describe('FTP Archive Tests', () => {
       })
       await seedFiles(ftpServer.rootDir, { 'test.tar': tarBuf })
 
-      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'tacom-test-'))
+      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'nemiga-test-'))
       try {
         const ftpArchivePath = `ftp://${sessionId}@${ftpServer.host}/test.tar`
         const result = await ftpArchiveProvider.copy(
@@ -189,7 +189,7 @@ describe('FTP Archive Tests', () => {
       await seedFiles(ftpServer.rootDir, { 'test.zip': zipBuf })
 
       // Create a local temp file to copy into the archive
-      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'tacom-test-'))
+      const tmpDir = await fs.mkdtemp(path.join(tmpdir(), 'nemiga-test-'))
       const localFile = path.join(tmpDir, 'newfile.txt')
       await fs.writeFile(localFile, 'new content')
 

@@ -12,7 +12,7 @@ const allowedRoots = process.env.ALLOWED_ROOTS
 const {server, cleanup} = createApp({allowedRoots})
 
 server.listen(port, host, () => {
-    console.log(`TaCom listening on http://${host}:${port}`)
+    console.log(`Nemiga listening on http://${host}:${port}`)
 
     if (!net.isIP(host) || !isLoopback(host)) {
         console.warn('⚠  WARNING: server is bound to a non-loopback address — the entire filesystem is accessible over the network')

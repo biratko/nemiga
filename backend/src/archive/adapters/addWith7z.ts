@@ -13,7 +13,7 @@ export async function addWith7z(
     sourcePaths: string[],
     options: ExtractOptions,
 ): Promise<{filesDone: number; bytesWritten: number}> {
-    const tmpDir = path.dirname(archivePath) + '/.tacom-add-' + crypto.randomUUID()
+    const tmpDir = path.dirname(archivePath) + '/.nemiga-add-' + crypto.randomUUID()
 
     try {
         // Collect all files for progress tracking

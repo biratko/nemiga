@@ -27,7 +27,7 @@ export function isHiddenEntry(name: string): boolean {
 
 /** Generate a temporary file path for archive rewrite operations. */
 export function makeTmpPath(archivePath: string): string {
-    return archivePath + '.tacom-tmp-' + crypto.randomUUID()
+    return archivePath + '.nemiga-tmp-' + crypto.randomUUID()
 }
 
 export interface ExtractItem {

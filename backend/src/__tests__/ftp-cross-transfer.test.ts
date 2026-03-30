@@ -61,7 +61,7 @@ describe('Cross-Provider FTP ↔ Local Transfers', () => {
     const pathGuard = new PathGuard()
     router = new ProviderRouter(local, archiveProvider, pathGuard, manager, ftpArchiveProvider)
 
-    localTmpDir = await mkdtemp(join(tmpdir(), 'tacom-cross-transfer-test-'))
+    localTmpDir = await mkdtemp(join(tmpdir(), 'nemiga-cross-transfer-test-'))
   })
 
   afterAll(async () => {

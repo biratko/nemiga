@@ -1,11 +1,11 @@
 {
-  "name": "tacom-electron",
+  "name": "nemiga-electron",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "TaCom — dual-panel file manager",
+  "description": "Nemiga — dual-panel file manager",
   "author": "Alexander B <alexanderb@users.noreply.github.com>",
-  "homepage": "https://github.com/alexanderb/tacom",
+  "homepage": "https://github.com/alexanderb/nemiga",
   "main": "dist/main.js",
   "scripts": {
     "build": "node build.js",
@@ -27,8 +27,8 @@
     "yauzl-promise": "^4.0.0"
   },
   "build": {
-    "appId": "com.tacom.app",
-    "productName": "TaCom",
+    "appId": "com.nemiga.app",
+    "productName": "Nemiga",
     "files": [
       "dist/main.js",
       "dist/preload.js"

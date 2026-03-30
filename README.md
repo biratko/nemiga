@@ -1,4 +1,4 @@
-# TaCom
+# Nemiga
 
 Browser-based dual-panel file manager.
 

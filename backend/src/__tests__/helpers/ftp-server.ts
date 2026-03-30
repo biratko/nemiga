@@ -12,7 +12,7 @@ export interface FtpTestServer {
 }
 
 export async function startFtpServer(): Promise<FtpTestServer> {
-  const rootDir = await mkdtemp(join(tmpdir(), 'tacom-ftp-test-'))
+  const rootDir = await mkdtemp(join(tmpdir(), 'nemiga-ftp-test-'))
   const host = '127.0.0.1'
 
   const server = new FtpSrv({
@@ -48,7 +48,7 @@ export async function startFtpServer(): Promise<FtpTestServer> {
 }
 
 export async function startFtpsServer(): Promise<FtpTestServer> {
-  const rootDir = await mkdtemp(join(tmpdir(), 'tacom-ftps-test-'))
+  const rootDir = await mkdtemp(join(tmpdir(), 'nemiga-ftps-test-'))
   const host = '127.0.0.1'
 
   const { execSync } = await import('child_process')

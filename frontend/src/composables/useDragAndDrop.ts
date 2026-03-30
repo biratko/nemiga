@@ -9,7 +9,7 @@ export interface DragData {
   panelId: string
 }
 
-const MIME = 'application/x-tacom-drag'
+const MIME = 'application/x-nemiga-drag'
 
 /** Shared reactive state across both panels */
 const dropTargetPanelId = ref<string | null>(null)

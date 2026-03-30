@@ -15,7 +15,7 @@ export async function mkdirWith7z(archivePath: string, innerPath: string): Promi
     const path = await import('node:path')
     const os = await import('node:os')
 
-    const tmpBase = path.join(os.tmpdir(), 'tacom-mkdir-' + crypto.randomUUID())
+    const tmpBase = path.join(os.tmpdir(), 'nemiga-mkdir-' + crypto.randomUUID())
     const normalized = innerPath.replace(/^\/+|\/+$/g, '')
     const dirInStaging = path.join(tmpBase, normalized)
 

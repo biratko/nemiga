@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaCom</title>
+    <title>Nemiga</title>
   </head>
   <body>
     <script>
       // bg-primary values must match themes/dark.ts and themes/light.ts
       (function() {
         var bgMap = { dark: '#1e1e2e', light: '#eff1f5' };
-        var theme = localStorage.getItem('tacom-theme') || 'dark';
+        var theme = localStorage.getItem('nemiga-theme') || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
         if (bgMap[theme]) document.documentElement.style.backgroundColor = bgMap[theme];
-        var zoom = localStorage.getItem('tacom-zoom');
+        var zoom = localStorage.getItem('nemiga-zoom');
         if (zoom) document.documentElement.style.zoom = zoom;
       })();
     </script>

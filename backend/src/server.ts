@@ -29,7 +29,8 @@ export function createExpressApp(
     const frontendDist = options.frontendDist ?? DEFAULT_FRONTEND_DIST
     app.use(express.static(frontendDist))
 
-    app.get('{*path}', (_req, res) => {
+    app.get('{*path}', (req, res) => {
+        if (req.path.startsWith('/ws/')) return
         res.sendFile(path.join(frontendDist, 'index.html'))
     })
 

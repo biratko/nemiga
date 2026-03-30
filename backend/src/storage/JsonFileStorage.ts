@@ -3,7 +3,7 @@ import {join} from 'node:path'
 import envPaths from 'env-paths'
 import type {StorageProvider} from './StorageProvider.js'
 
-const configDir = envPaths('tacom', {suffix: ''}).config
+const configDir = envPaths('nemiga', {suffix: ''}).config
 const VALID_KEY = /^[a-z0-9_-]+$/
 
 export class JsonFileStorage implements StorageProvider {

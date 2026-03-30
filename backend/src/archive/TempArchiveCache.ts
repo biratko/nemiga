@@ -14,7 +14,7 @@ const TTL = 5 * 60 * 1000
 
 export class TempArchiveCache {
     private cache = new Map<string, CacheEntry>()
-    private tmpBase = path.join(os.tmpdir(), 'tacom-archive-cache')
+    private tmpBase = path.join(os.tmpdir(), 'nemiga-archive-cache')
 
     async getOrExtract(
         archivePath: string,

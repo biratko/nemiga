@@ -23,7 +23,7 @@ interface CacheEntry {
 export class FtpArchiveCache {
     private cache = new Map<string, CacheEntry>()
     private inflight = new Map<string, Promise<string>>()
-    private tmpBase = path.join(os.tmpdir(), 'tacom-ftp-archive')
+    private tmpBase = path.join(os.tmpdir(), 'nemiga-ftp-archive')
     private ttlCleanMs: number
 
     constructor(private sessions: FtpSessionManager, options?: ArchiveCacheOptions) {

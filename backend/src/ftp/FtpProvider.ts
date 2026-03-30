@@ -243,7 +243,7 @@ export class FtpProvider implements FileSystemProvider {
             // This must use the atomic downloadToFile/uploadFromFile adapter methods so each
             // FTP transfer fully completes (including the control-channel 226 response) before
             // the next one starts, avoiding "task while another one is still running" errors.
-            const tmpPath = path.join(os.tmpdir(), `tacom-ftp-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+            const tmpPath = path.join(os.tmpdir(), `nemiga-ftp-${Date.now()}-${Math.random().toString(36).slice(2)}`)
             try {
                 await this.run(() => this.adapter.downloadToFile(src, tmpPath))
                 await this.run(() => this.adapter.uploadFromFile(tmpPath, dest))
