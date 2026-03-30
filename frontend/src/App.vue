@@ -445,7 +445,7 @@ onUnmounted(() => {
                     :tabs-state="panelState.left"
                     :is-active="activePanel === 'left'"
                     :show-hidden="currentSettings.showHidden ?? false"
-                    :style="{ flex: '0 0 ' + splitPercent + '%' }"
+                    :style="{ flex: '0 0 calc(' + splitPercent + '% - var(--splitter-width) / 2)' }"
                     @tabs-change="state => onTabsChange('left', state)"
                     @navigate="path => onNavigate('left', path)"
                     @sort-change="sort => onSortChange('left', sort)"
@@ -605,7 +605,7 @@ onUnmounted(() => {
 
 .panel-splitter {
     flex-shrink: 0;
-    width: 4px;
+    width: var(--splitter-width);
     cursor: col-resize;
     background: var(--border);
     position: relative;

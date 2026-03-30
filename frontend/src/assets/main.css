@@ -7,6 +7,7 @@
 }
 
 :root {
+  --splitter-width: 4px;
   --bg-primary: #1e1e2e;
   --bg-panel: #252535;
   --bg-header: #2a2a3c;
