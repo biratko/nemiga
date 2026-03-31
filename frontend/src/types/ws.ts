@@ -39,3 +39,10 @@ export type PackEvents = {
     complete: {event: 'complete'; files_done: number; total_files?: number; archive_size: number; skipped: number}
     error: {event: 'error'; error: OperationError}
 }
+
+export type SearchEvents = {
+    found: {event: 'found'; files: Array<{name: string; path: string; size: number}>}
+    progress: {event: 'progress'; current: string; found: number; scanned: number}
+    complete: {event: 'complete'; found: number; scanned: number}
+    error: {event: 'error'; error: OperationError}
+}

@@ -1,4 +1,4 @@
-import type {CopyEvents, MoveEvents, DeleteEvents, MkdirEvents, ExtractEvents, PackEvents} from '@/types/ws'
+import type {CopyEvents, MoveEvents, DeleteEvents, MkdirEvents, ExtractEvents, PackEvents, SearchEvents} from '@/types/ws'
 
 type EventMap = Record<string, {event: string}>
 type EventHandler = (data: never) => void
@@ -74,4 +74,8 @@ export function connectExtractWs(): OperationWsHandle<ExtractEvents> {
 
 export function connectPackWs(): OperationWsHandle<PackEvents> {
     return connectOperationWs<PackEvents>('/ws/operations/pack')
+}
+
+export function connectSearchWs(): OperationWsHandle<SearchEvents> {
+    return connectOperationWs<SearchEvents>('/ws/operations/search')
 }
