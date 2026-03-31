@@ -266,3 +266,54 @@ export interface WsPackCancelCommand {
 export type WsPackClientCommand =
     | WsPackStartCommand
     | WsPackCancelCommand
+
+// ── Search: Server → Client events ──
+
+export interface WsSearchFoundEvent {
+    event: 'found'
+    files: Array<{name: string; path: string; size: number}>
+}
+
+export interface WsSearchProgressEvent {
+    event: 'progress'
+    current: string
+    found: number
+    scanned: number
+}
+
+export interface WsSearchCompleteEvent {
+    event: 'complete'
+    found: number
+    scanned: number
+}
+
+export interface WsSearchErrorEvent {
+    event: 'error'
+    error: ErrorInfo
+}
+
+export type WsSearchServerEvent =
+    | WsSearchFoundEvent
+    | WsSearchProgressEvent
+    | WsSearchCompleteEvent
+    | WsSearchErrorEvent
+
+// ── Search: Client → Server commands ──
+
+export interface WsSearchStartCommand {
+    command: 'start'
+    directory: string
+    fileMask: string
+    contentSearch?: string
+    caseSensitive: boolean
+    regex: boolean
+    maxDepth: number
+}
+
+export interface WsSearchCancelCommand {
+    command: 'cancel'
+}
+
+export type WsSearchClientCommand =
+    | WsSearchStartCommand
+    | WsSearchCancelCommand

@@ -15,6 +15,7 @@
     "compressjs": "^1.0.3",
     "env-paths": "^4.0.0",
     "express": "^5.1.0",
+    "picomatch": "^4.0.4",
     "ssh2-sftp-client": "^12.1.0",
     "tar-stream": "^3.1.8",
     "unbzip2-stream": "^1.4.3",
@@ -26,6 +27,7 @@
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@types/picomatch": "^4.0.2",
     "@types/ssh2-sftp-client": "^9.0.6",
     "@types/supertest": "^7.2.0",
     "@types/tar-stream": "^3.1.4",
