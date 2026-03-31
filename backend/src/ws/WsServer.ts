@@ -11,6 +11,7 @@ import {DeleteConnectionHandler} from './DeleteConnectionHandler.js'
 import {MkdirConnectionHandler} from './MkdirConnectionHandler.js'
 import {ExtractConnectionHandler} from './ExtractConnectionHandler.js'
 import {PackConnectionHandler} from './PackConnectionHandler.js'
+import {SearchConnectionHandler} from './SearchConnectionHandler.js'
 
 export class WsServer {
     private wss: WebSocketServer
@@ -41,6 +42,8 @@ export class WsServer {
                 factory = async (ws) => new ExtractConnectionHandler(ws, this.router)
             } else if (pathname === '/ws/operations/pack') {
                 factory = async (ws) => new PackConnectionHandler(ws, this.router)
+            } else if (pathname === '/ws/operations/search') {
+                factory = async (ws) => new SearchConnectionHandler(ws, this.router)
             }
 
             if (!factory) {
