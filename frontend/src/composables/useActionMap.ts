@@ -21,6 +21,7 @@ export const ACTION_DEFAULTS: Record<string, string[]> = {
     'file.move':              ['F6'],
     'dir.create':             ['F7'],
     'file.delete':            ['F8', 'Delete'],
+    'search':                 ['Alt+F7'],
 
     // Tabs
     'tab.new':                ['Alt+T'],
@@ -57,6 +58,7 @@ export const ACTION_CATEGORIES: {title: string; actions: {id: string; label: str
             {id: 'file.move', label: 'Move'},
             {id: 'dir.create', label: 'Create Directory'},
             {id: 'file.delete', label: 'Delete'},
+            {id: 'search', label: 'Search'},
         ],
     },
     {
