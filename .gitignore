@@ -30,3 +30,4 @@ __pycache__/
 /electron/dist/
 /.claude/
 /CLAUDE.md
+.superpowers/
