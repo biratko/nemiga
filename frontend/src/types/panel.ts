@@ -1,5 +1,11 @@
 import type {FSEntry} from './fs'
 
+export interface SearchResultEntry {
+    name: string
+    path: string
+    size: number
+}
+
 export interface PanelAPI {
     currentPath: string
     cursorIndex: number
@@ -15,4 +21,5 @@ export interface PanelAPI {
     setKeyboardActive(val: boolean): void
     startRename(): void
     calcDirSize(): void
+    setSearchResults(results: SearchResultEntry[]): void
 }
