@@ -91,6 +91,7 @@ function startSearch() {
     })
 
     wsHandle.onEvent('error', (data) => {
+        if (phase.value === 'done') return
         opError.value = data.error
         phase.value = 'error'
     })
