@@ -42,6 +42,7 @@ function extractFtpHost(path: string): string | null {
 }
 
 function tabLabel(tab: TabState): string {
+    if (tab.searchResults) return 'Search'
     if (tab.path === '/') return '/'
     const lastSegment = tab.path.split('/').pop() || ''
     if (isFtpTab(tab) && !lastSegment) {
@@ -133,7 +134,10 @@ function onCtxCloseOthers() {
                 @drop="onDrop($event, i)"
                 @dragend="onDragEnd"
             >
-                <svg v-if="tab.mode === 'locked'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg v-if="tab.searchResults" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <svg v-else-if="tab.mode === 'locked'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
                 <svg v-else-if="tab.mode === 'fixed'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

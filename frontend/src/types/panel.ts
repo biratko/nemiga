@@ -21,5 +21,4 @@ export interface PanelAPI {
     setKeyboardActive(val: boolean): void
     startRename(): void
     calcDirSize(): void
-    setSearchResults(results: SearchResultEntry[]): void
 }

@@ -29,6 +29,7 @@ import {setToastDuration} from '@/composables/useToast'
 interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
     closeTab(): void
+    setSearchResults(results: SearchResultEntry[]): void
 }
 
 const leftPanel = ref<TabPanelAPI>()
@@ -311,9 +312,16 @@ async function saveWorkspace() {
     }
 }
 
+function stripSearchResults(state: PanelTabsState): PanelTabsState {
+    return {
+        ...state,
+        tabs: state.tabs.map(({searchResults, ...tab}) => tab),
+    }
+}
+
 function onTabsChange(side: 'left' | 'right', state: PanelTabsState) {
     if (!panelState.value) return
-    panelState.value[side] = state
+    panelState.value[side] = stripSearchResults(state)
     saveWorkspace()
 }
 

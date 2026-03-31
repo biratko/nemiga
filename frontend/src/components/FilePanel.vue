@@ -28,6 +28,8 @@ const props = defineProps<{
   isActive?: boolean
   showHidden?: boolean
   interceptNavigation?: boolean
+  searchResults?: Array<{name: string; path: string; size: number}>
+
 }>()
 
 const emit = defineEmits<{
@@ -42,9 +44,6 @@ const emit = defineEmits<{
 }>()
 
 const panelContentRef = ref<HTMLElement | null>(null)
-
-// Search results mode
-const searchResults = ref<Array<{name: string; path: string; size: number}> | null>(null)
 
 const { currentPath, entries, error, loadDirectory: rawLoad } = useDirectoryLoader()
 
@@ -436,31 +435,26 @@ const statusBarStats = computed(() => {
   return { selectedCount, total, selectedSize, totalSize }
 })
 
-function setSearchResults(results: Array<{name: string; path: string; size: number}>) {
-    searchResults.value = results
-}
-
-function exitSearchResults() {
-    searchResults.value = null
-}
-
 function navigateToSearchResult(result: {name: string; path: string; size: number}) {
     const dir = result.path === '.' ? currentPath.value : joinPath(currentPath.value, result.path)
-    exitSearchResults()
     loadDirectory(dir)
 }
 
-defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize, setSearchResults })
+defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize })
 
 function onDocumentMouseUp(e: MouseEvent) {
   if (e.button === 2) onPanelRightMouseUp()
 }
 
 onMounted(() => {
-  const restoreState = (props.initialCursorIndex || props.initialSelectedNames)
-    ? {cursorIndex: props.initialCursorIndex, selectedNames: props.initialSelectedNames}
-    : undefined
-  loadDirectory(props.initialPath ?? '/', restoreState)
+  if (!props.searchResults) {
+    const restoreState = (props.initialCursorIndex || props.initialSelectedNames)
+      ? {cursorIndex: props.initialCursorIndex, selectedNames: props.initialSelectedNames}
+      : undefined
+    loadDirectory(props.initialPath ?? '/', restoreState)
+  } else {
+    currentPath.value = props.initialPath ?? '/'
+  }
   document.addEventListener('mouseup', onDocumentMouseUp)
 })
 
@@ -498,7 +492,33 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <div class="panel-content" ref="panelContentRef">
+    <!-- Search results mode -->
+    <div v-if="searchResults" class="panel-content">
+      <table class="file-table">
+        <thead>
+          <tr>
+            <th class="sr-col-name">Name</th>
+            <th class="sr-col-path">Path</th>
+            <th class="sr-col-size">Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="(r, i) in searchResults"
+            :key="i"
+            class="entry"
+            :class="{ 'row-alt': i % 2 === 1 }"
+            @dblclick="navigateToSearchResult(r)"
+          >
+            <td class="sr-col-name">{{ r.name }}</td>
+            <td class="sr-col-path">{{ r.path }}</td>
+            <td class="sr-col-size">{{ formatBytes(r.size) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- Normal file listing mode -->
+    <div v-else class="panel-content" ref="panelContentRef">
       <table class="file-table">
         <thead>
           <tr>
@@ -593,37 +613,13 @@ onBeforeUnmount(() => {
       @resolved="onCommitErrorResolved"
     />
     <div class="panel-statusbar">
-      <span class="status-files">{{ statusBarStats.selectedCount }}/{{ statusBarStats.total }}</span>
-      <span class="status-size">{{ formatBytes(statusBarStats.selectedSize) }}/{{ formatBytes(statusBarStats.totalSize) }}</span>
-    </div>
-    <!-- Search results overlay -->
-    <div v-if="searchResults" class="search-results-overlay">
-        <div class="search-results-header">
-            <span class="search-results-title">[Search Results] — {{ searchResults.length }} files</span>
-            <button class="search-results-close" @click="exitSearchResults">✕</button>
-        </div>
-        <div class="search-results-table-wrap">
-            <table class="search-results-table">
-                <thead>
-                    <tr>
-                        <th class="sr-col-name">Name</th>
-                        <th class="sr-col-path">Path</th>
-                        <th class="sr-col-size">Size</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr
-                        v-for="(r, i) in searchResults"
-                        :key="i"
-                        @dblclick="navigateToSearchResult(r)"
-                    >
-                        <td class="sr-col-name">{{ r.name }}</td>
-                        <td class="sr-col-path">{{ r.path }}</td>
-                        <td class="sr-col-size">{{ formatBytes(r.size) }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+      <template v-if="searchResults">
+        <span class="status-files">{{ searchResults.length }} found</span>
+      </template>
+      <template v-else>
+        <span class="status-files">{{ statusBarStats.selectedCount }}/{{ statusBarStats.total }}</span>
+        <span class="status-size">{{ formatBytes(statusBarStats.selectedSize) }}/{{ formatBytes(statusBarStats.totalSize) }}</span>
+      </template>
     </div>
   </div>
 </template>
@@ -880,85 +876,10 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
-.search-results-overlay {
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    background: var(--bg-primary);
-}
-
-.search-results-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 4px 8px;
-    background: var(--bg-header);
-    border-bottom: 1px solid var(--border);
-    font-size: 12px;
-}
-
-.search-results-title {
-    font-weight: bold;
-    color: var(--accent);
-}
-
-.search-results-close {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 14px;
-    padding: 0 4px;
-}
-
-.search-results-close:hover {
-    color: var(--text-primary);
-}
-
-.search-results-table-wrap {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.search-results-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: var(--font-size-sm);
-}
-
-.search-results-table th {
-    text-align: left;
-    padding: 2px 8px;
-    background: var(--bg-header);
-    border-bottom: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-secondary);
-    position: sticky;
-    top: 0;
-}
-
-.search-results-table td {
-    padding: 1px 8px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    height: 19px;
-}
-
-.search-results-table tr:hover {
-    background: var(--bg-row-hover);
-}
-
-.search-results-table tr {
-    cursor: pointer;
-}
-
 .sr-col-name { width: 35%; }
-.sr-col-path { width: 50%; color: var(--text-secondary); }
+.sr-col-path { width: 50%; text-align: left; color: var(--text-secondary); }
 .sr-col-size { width: 15%; text-align: right; color: var(--text-secondary); }
 
-.search-results-table td.sr-col-path { color: var(--text-secondary); }
-.search-results-table td.sr-col-size { text-align: right; color: var(--text-secondary); }
+td.sr-col-path { color: var(--text-secondary); }
+td.sr-col-size { text-align: right; color: var(--text-secondary); }
 </style>

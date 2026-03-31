@@ -164,7 +164,10 @@ function onBeforeNavigate(path: string) {
 
 function onNavigate(path: string) {
     const tab = activeTab.value
-    if (tab) tab.path = path
+    if (tab) {
+        tab.path = path
+        tab.searchResults = undefined
+    }
     emit('navigate', path)
     emitTabsChange()
 }
@@ -203,7 +206,22 @@ defineExpose({
     setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
     startRename() { filePanelRef.value?.startRename() },
     calcDirSize() { filePanelRef.value?.calcDirSize() },
-    setSearchResults(results: Array<{name: string; path: string; size: number}>) { filePanelRef.value?.setSearchResults(results) },
+    setSearchResults(results: Array<{name: string; path: string; size: number}>) {
+        snapshotCurrentTab()
+        const current = activeTab.value
+        const newTab: TabState = {
+            id: crypto.randomUUID(),
+            path: current?.path ?? '/',
+            sort: current ? {...current.sort} : {key: 'name', dir: 'asc'},
+            cursorIndex: 0,
+            selectedNames: [],
+            mode: 'normal',
+            searchResults: results,
+        }
+        tabs.value.splice(activeTabIndex.value + 1, 0, newTab)
+        activeTabIndex.value = activeTabIndex.value + 1
+        emitTabsChange()
+    },
     createTab,
     closeTab() { closeTab(activeTabIndex.value) },
 })
@@ -223,6 +241,7 @@ defineExpose({
             :initial-selected-names="activeTab.selectedNames"
             :is-active="isActive"
             :show-hidden="showHidden"
+            :search-results="activeTab.searchResults"
             :intercept-navigation="activeTab.mode === 'locked'"
             @before-navigate="onBeforeNavigate"
             @navigate="onNavigate"
