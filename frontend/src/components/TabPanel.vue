@@ -203,6 +203,7 @@ defineExpose({
     setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
     startRename() { filePanelRef.value?.startRename() },
     calcDirSize() { filePanelRef.value?.calcDirSize() },
+    setSearchResults(results: Array<{name: string; path: string; size: number}>) { filePanelRef.value?.setSearchResults(results) },
     createTab,
     closeTab() { closeTab(activeTabIndex.value) },
 })
