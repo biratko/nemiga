@@ -8,6 +8,8 @@ import DeleteDialog from './components/DeleteDialog.vue'
 import MkdirDialog from './components/MkdirDialog.vue'
 import ExtractDialog from './components/ExtractDialog.vue'
 import PackDialog from './components/PackDialog.vue'
+import SearchDialog from './components/SearchDialog.vue'
+import type {SearchResultEntry} from './components/SearchDialog.vue'
 import SettingsDialog from './components/SettingsDialog.vue'
 import type {KeyBindings, SettingsState} from '@/types/settings'
 import {useActionMap} from '@/composables/useActionMap'
@@ -75,6 +77,7 @@ const {copyOp, moveOp, deleteOp, mkdirOp, startCopy, startMove, startDelete, sta
 
 const extractOp = ref<{archivePath: string; destination: string; archiveName: string; subfolder: string; skipInput: boolean} | null>(null)
 const packOp = ref<{defaultName: string; sourcePaths: string[]; destination: string} | null>(null)
+const searchOp = ref(false)
 
 const ARCHIVE_SUFFIXES = ['.tar.gz', '.tar.bz2', '.tar.xz', '.tar', '.zip', '.7z', '.gz', '.bz2']
 
@@ -117,6 +120,18 @@ function startPack(sourcePaths: string[]) {
     }
 
     packOp.value = {defaultName, sourcePaths, destination}
+}
+
+function startSearchOp() {
+    searchOp.value = true
+}
+
+function handleSearchToPanel(results: SearchResultEntry[]) {
+    const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
+    if (panel && results.length > 0) {
+        panel.setSearchResults(results)
+    }
+    searchOp.value = false
 }
 
 function onPackClose(packed: boolean) {
@@ -318,7 +333,7 @@ function handleMousedown(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || showInput.value) return
+    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || searchOp.value || showInput.value) return
 
     const action = matchAction(e)
     if (!action) return
@@ -393,6 +408,9 @@ function handleKeydown(e: KeyboardEvent) {
         case 'file.delete':
             startDelete()
             break
+        case 'search':
+            startSearchOp()
+            break
     }
 }
 
@@ -422,7 +440,7 @@ onUnmounted(() => {
 <template>
     <div class="app">
         <div class="top-toolbar">
-            <button class="top-toolbar-btn" disabled>
+            <button class="top-toolbar-btn" @click="startSearchOp">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="11" cy="11" r="8"/>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -541,6 +559,12 @@ onUnmounted(() => {
             :source-paths="packOp.sourcePaths"
             :destination="packOp.destination"
             @close="onPackClose"
+        />
+        <SearchDialog
+            v-if="searchOp"
+            :initial-directory="(activePanel === 'left' ? leftPanel : rightPanel)?.currentPath ?? '/'"
+            @close="searchOp = false"
+            @to-panel="handleSearchToPanel"
         />
         <FtpConnectDialog
             v-if="showFtpConnect !== null"
