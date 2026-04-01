@@ -24,7 +24,12 @@ export interface MkdirOp {
 }
 
 function buildPaths(selected: FSEntry[], basePath: string): string[] {
-  return selected.map(e => joinPath(basePath, e.name))
+  return selected.map(e => {
+    const dir = e.searchPath && e.searchPath !== '.'
+      ? joinPath(basePath, e.searchPath)
+      : basePath
+    return joinPath(dir, e.name)
+  })
 }
 
 export function useFileOperations(

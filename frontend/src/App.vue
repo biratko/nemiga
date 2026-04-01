@@ -9,7 +9,7 @@ import MkdirDialog from './components/MkdirDialog.vue'
 import ExtractDialog from './components/ExtractDialog.vue'
 import PackDialog from './components/PackDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
-import type {SearchResultEntry} from './components/SearchDialog.vue'
+import type {FSEntry} from './types/fs'
 import SettingsDialog from './components/SettingsDialog.vue'
 import type {SettingsState} from '@/types/settings'
 import {useActionMap} from '@/composables/useActionMap'
@@ -29,7 +29,7 @@ import {setToastDuration} from '@/composables/useToast'
 interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
     closeTab(): void
-    setSearchResults(results: SearchResultEntry[]): void
+    setSearchResults(results: FSEntry[], directory: string): void
 }
 
 const leftPanel = ref<TabPanelAPI>()
@@ -127,10 +127,10 @@ function startSearchOp() {
     searchOp.value = true
 }
 
-function handleSearchToPanel(results: SearchResultEntry[]) {
+function handleSearchToPanel(results: FSEntry[], directory: string) {
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
     if (panel && results.length > 0) {
-        panel.setSearchResults(results)
+        panel.setSearchResults(results, directory)
     }
     searchOp.value = false
 }

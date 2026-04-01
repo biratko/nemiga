@@ -1,11 +1,5 @@
 import type {FSEntry} from './fs'
 
-export interface SearchResultEntry {
-    name: string
-    path: string
-    size: number
-}
-
 export interface PanelAPI {
     currentPath: string
     cursorIndex: number

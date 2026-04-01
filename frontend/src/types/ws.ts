@@ -40,8 +40,10 @@ export type PackEvents = {
     error: {event: 'error'; error: OperationError}
 }
 
+import type {FSEntry} from './fs'
+
 export type SearchEvents = {
-    found: {event: 'found'; files: Array<{name: string; path: string; size: number}>}
+    found: {event: 'found'; files: FSEntry[]}
     progress: {event: 'progress'; current: string; found: number; scanned: number}
     complete: {event: 'complete'; found: number; scanned: number}
     error: {event: 'error'; error: OperationError}

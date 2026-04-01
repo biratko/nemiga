@@ -8,6 +8,7 @@ export interface FSEntry {
   hidden: boolean
   symlink_target: string | null
   isArchive?: boolean
+  searchPath?: string
 }
 
 export interface ListResponse {

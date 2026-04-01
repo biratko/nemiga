@@ -1,5 +1,5 @@
 import type {ErrorInfo} from './errors.js'
-import type {UserConfirmAction} from './fs-types.js'
+import type {FSEntry, UserConfirmAction} from './fs-types.js'
 
 // ── Copy: Server → Client events ──
 
@@ -271,7 +271,7 @@ export type WsPackClientCommand =
 
 export interface WsSearchFoundEvent {
     event: 'found'
-    files: Array<{name: string; path: string; size: number}>
+    files: FSEntry[]
 }
 
 export interface WsSearchProgressEvent {

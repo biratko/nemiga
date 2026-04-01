@@ -40,7 +40,12 @@ export function useDragAndDrop(
       : [entry]
 
     const data: DragData = {
-      sources: entries.map(en => joinPath(currentPath.value, en.name)),
+      sources: entries.map(en => {
+        const dir = en.searchPath && en.searchPath !== '.'
+          ? joinPath(currentPath.value, en.searchPath)
+          : currentPath.value
+        return joinPath(dir, en.name)
+      }),
       sourcePath: currentPath.value,
       panelId,
     }

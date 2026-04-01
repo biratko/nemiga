@@ -10,6 +10,7 @@ export type FSEntry = {
     hidden: boolean
     symlink_target: string | null
     isArchive?: boolean
+    searchPath?: string
 }
 
 // What the provider asks for (per-file decision)

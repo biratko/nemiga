@@ -28,8 +28,7 @@ const props = defineProps<{
   isActive?: boolean
   showHidden?: boolean
   interceptNavigation?: boolean
-  searchResults?: Array<{name: string; path: string; size: number}>
-
+  searchResults?: FSEntry[]
 }>()
 
 const emit = defineEmits<{
@@ -47,9 +46,12 @@ const panelContentRef = ref<HTMLElement | null>(null)
 
 const { currentPath, entries, error, loadDirectory: rawLoad } = useDirectoryLoader()
 
-const visibleEntries = computed(() =>
-  props.showHidden ? entries.value : entries.value.filter(e => !e.hidden)
-)
+const isSearchMode = computed(() => !!props.searchResults)
+
+const visibleEntries = computed(() => {
+  const src = isSearchMode.value ? props.searchResults! : entries.value
+  return props.showHidden ? src : src.filter(e => !e.hidden)
+})
 
 const { sortKey, sortDir, setSort: rawSetSort, sortedEntries } = useSorting(visibleEntries, props.initialSortKey, props.initialSortDir)
 
@@ -136,24 +138,25 @@ onNotify('ftp-archive-lost', (data: any) => {
   commitErrorState.value = {visible: true, ftpPath, sessionDead: true, resolve: null}
 })
 
+function entryFullPath(entry: FSEntry): string {
+  return joinPath(entryDir(entry), entry.name)
+}
+
 function handleContextMenuSelect(action: string, event: MouseEvent) {
   if (action === 'rename' && menuState.value.entry) {
     startRename(menuState.value.entry)
   } else if (action === 'extract' && menuState.value.entry) {
-    const entry = menuState.value.entry
-    const fullPath = joinPath(currentPath.value, entry.name)
-    emit('extract', fullPath, event.shiftKey)
+    emit('extract', entryFullPath(menuState.value.entry), event.shiftKey)
   } else if (action === 'copy-path' && menuState.value.entry) {
-    const fullPath = joinPath(currentPath.value, menuState.value.entry.name)
-    navigator.clipboard.writeText(fullPath)
+    navigator.clipboard.writeText(entryFullPath(menuState.value.entry))
   } else if (action === 'pack') {
     const sources: string[] = []
     if (selectedNames.value.size > 0) {
-      for (const name of selectedNames.value) {
-        sources.push(joinPath(currentPath.value, name))
+      for (const entry of selectedEntries.value) {
+        sources.push(entryFullPath(entry))
       }
     } else if (menuState.value.entry) {
-      sources.push(joinPath(currentPath.value, menuState.value.entry.name))
+      sources.push(entryFullPath(menuState.value.entry))
     }
     if (sources.length > 0) {
       emit('pack', sources, event.shiftKey)
@@ -246,8 +249,9 @@ function setSort(key: 'name' | 'size' | 'modified') {
 }
 
 async function navigate(entry: FSEntry) {
+  const dir = entryDir(entry)
   if (entry.type === 'directory') {
-    const target = joinPath(currentPath.value, entry.name)
+    const target = joinPath(dir, entry.name)
     if (props.interceptNavigation) {
       emit('before-navigate', target)
       return
@@ -255,7 +259,7 @@ async function navigate(entry: FSEntry) {
     await maybeCommitFtpArchive(target)
     loadDirectory(target)
   } else if (entry.isArchive) {
-    const archivePath = joinPath(currentPath.value, entry.name)
+    const archivePath = joinPath(dir, entry.name)
     const target = archivePath + '::/'
     if (props.interceptNavigation) {
       emit('before-navigate', target)
@@ -264,7 +268,7 @@ async function navigate(entry: FSEntry) {
     await maybeCommitFtpArchive(target)
     loadDirectory(target)
   } else {
-    emit('open-file', joinPath(currentPath.value, entry.name))
+    emit('open-file', joinPath(dir, entry.name))
   }
 }
 
@@ -338,7 +342,7 @@ const dirSizes = ref<Map<string, number | 'loading'>>(new Map())
 async function calcDirSize() {
   const entry = cursorEntry.value
   if (!entry || entry.type !== 'directory') return
-  const fullPath = joinPath(currentPath.value, entry.name)
+  const fullPath = entryFullPath(entry)
   if (dirSizes.value.has(entry.name)) return
   dirSizes.value.set(entry.name, 'loading')
   dirSizes.value = new Map(dirSizes.value) // trigger reactivity
@@ -359,7 +363,7 @@ function handleDrop(e: DragEvent, entry: FSEntry | 'parent' | null) {
 const selectedNamesArray = computed(() => [...selectedNames.value])
 
 function copyPath() {
-  navigator.clipboard.writeText(currentPath.value)
+  navigator.clipboard.writeText(displayPath.value)
 }
 
 const isFtpPath = computed(() => currentPath.value.startsWith('ftp://'))
@@ -380,10 +384,12 @@ async function openTerminal() {
   }
 }
 
-const isWindowsPath = computed(() => /^[A-Za-z]:/.test(currentPath.value.replace(/^\//, '')))
+const isWindowsPath = computed(() => /^[A-Za-z]:/.test(displayPath.value.replace(/^\//, '')))
+
+const displayPath = computed(() => props.searchResults ? searchDisplayPath.value : currentPath.value)
 
 const pathSegments = computed(() => {
-  const full = currentPath.value
+  const full = displayPath.value
   if (full.startsWith('ftp://')) {
     const rest = full.slice('ftp://'.length)
     const slashIndex = rest.indexOf('/')
@@ -435,9 +441,41 @@ const statusBarStats = computed(() => {
   return { selectedCount, total, selectedSize, totalSize }
 })
 
-function navigateToSearchResult(result: {name: string; path: string; size: number}) {
-    const dir = result.path === '.' ? currentPath.value : joinPath(currentPath.value, result.path)
-    loadDirectory(dir)
+const searchCommonPrefix = computed(() => {
+  if (!props.searchResults || props.searchResults.length === 0) return ''
+  const paths = props.searchResults.map(r => !r.searchPath || r.searchPath === '.' ? '' : r.searchPath)
+  let common = paths[0]
+  for (let i = 1; i < paths.length; i++) {
+    while (common && !paths[i].startsWith(common.endsWith('/') ? common : common + '/') && paths[i] !== common) {
+      const slash = common.lastIndexOf('/')
+      common = slash === -1 ? '' : common.slice(0, slash)
+    }
+    if (!common) break
+  }
+  return common
+})
+
+const searchDisplayPath = computed(() => {
+  const base = currentPath.value
+  const prefix = searchCommonPrefix.value
+  if (!prefix) return base
+  return joinPath(base, prefix)
+})
+
+function searchRelativePath(entry: FSEntry): string {
+  const prefix = searchCommonPrefix.value
+  const sp = !entry.searchPath || entry.searchPath === '.' ? '' : entry.searchPath
+  if (!prefix) return sp || '.'
+  if (sp === prefix) return '.'
+  const stripped = sp.startsWith(prefix + '/') ? sp.slice(prefix.length + 1) : sp
+  return stripped || '.'
+}
+
+function entryDir(entry: FSEntry): string {
+  if (entry.searchPath && entry.searchPath !== '.') {
+    return joinPath(currentPath.value, entry.searchPath)
+  }
+  return currentPath.value
 }
 
 defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize })
@@ -492,39 +530,14 @@ onBeforeUnmount(() => {
         </svg>
       </button>
     </div>
-    <!-- Search results mode -->
-    <div v-if="searchResults" class="panel-content">
-      <table class="file-table">
-        <thead>
-          <tr>
-            <th class="sr-col-name">Name</th>
-            <th class="sr-col-path">Path</th>
-            <th class="sr-col-size">Size</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="(r, i) in searchResults"
-            :key="i"
-            class="entry"
-            :class="{ 'row-alt': i % 2 === 1 }"
-            @dblclick="navigateToSearchResult(r)"
-          >
-            <td class="sr-col-name">{{ r.name }}</td>
-            <td class="sr-col-path">{{ r.path }}</td>
-            <td class="sr-col-size">{{ formatBytes(r.size) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <!-- Normal file listing mode -->
-    <div v-else class="panel-content" ref="panelContentRef">
-      <table class="file-table">
+    <div class="panel-content" ref="panelContentRef">
+      <table class="file-table" :class="{ 'search-table': isSearchMode }">
         <thead>
           <tr>
             <th class="col-name sortable" @click="setSort('name')">
               Name <span class="sort-indicator">{{ sortKey === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
             </th>
+            <th v-if="isSearchMode" class="col-path">Path</th>
             <th class="col-size sortable" @click="setSort('size')">
               Size <span class="sort-indicator">{{ sortKey === 'size' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
             </th>
@@ -538,19 +551,20 @@ onBeforeUnmount(() => {
             class="entry entry-up"
             :class="{ cursor: cursorIndex === 0, 'drop-target': dropTargetPanelId === panelId && dropTargetEntry === 'parent' }"
             @click="resetCursorSelection"
-            @dblclick="goUp"
+            @dblclick="isSearchMode ? loadDirectory(searchDisplayPath) : goUp()"
             @dragover="onDragOver($event, 'parent')"
             @dragleave="onDragLeaveEntry"
             @drop.stop="handleDrop($event, 'parent')"
           >
             <td class="col-name">[..]</td>
+            <td v-if="isSearchMode" class="col-path"></td>
             <td class="col-size"></td>
             <td class="col-date"></td>
           </tr>
           <tr v-if="topSpacerHeight > 0" :style="{ height: topSpacerHeight + 'px' }"></tr>
           <tr
             v-for="{ entry, globalIndex } in visibleSlice"
-            :key="entry.name"
+            :key="entry.name + (entry.searchPath ?? '')"
             class="entry"
             :class="{
               'row-alt': globalIndex % 2 === 1,
@@ -589,6 +603,7 @@ onBeforeUnmount(() => {
                 <span v-else>{{ entry.name }}</span>
               </span>
             </td>
+            <td v-if="isSearchMode" class="col-path">{{ searchRelativePath(entry) }}</td>
             <td class="col-size">{{ entry.type === 'directory' ? (dirSizes.get(entry.name) === 'loading' ? '...' : typeof dirSizes.get(entry.name) === 'number' ? formatBytes(dirSizes.get(entry.name) as number) : '&lt;DIR&gt;') : formatSize(entry) }}</td>
             <td class="col-date">{{ formatDate(entry.modified) }}</td>
           </tr>
@@ -613,13 +628,8 @@ onBeforeUnmount(() => {
       @resolved="onCommitErrorResolved"
     />
     <div class="panel-statusbar">
-      <template v-if="searchResults">
-        <span class="status-files">{{ searchResults.length }} found</span>
-      </template>
-      <template v-else>
-        <span class="status-files">{{ statusBarStats.selectedCount }}/{{ statusBarStats.total }}</span>
-        <span class="status-size">{{ formatBytes(statusBarStats.selectedSize) }}/{{ formatBytes(statusBarStats.totalSize) }}</span>
-      </template>
+      <span class="status-files">{{ statusBarStats.selectedCount }}/{{ statusBarStats.total }}</span>
+      <span class="status-size">{{ formatBytes(statusBarStats.selectedSize) }}/{{ formatBytes(statusBarStats.totalSize) }}</span>
     </div>
   </div>
 </template>
@@ -876,10 +886,15 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
-.sr-col-name { width: 35%; }
-.sr-col-path { width: 50%; text-align: left; color: var(--text-secondary); }
-.sr-col-size { width: 15%; text-align: right; color: var(--text-secondary); }
+.col-path {
+  width: 30%;
+  text-align: left;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
 
-td.sr-col-path { color: var(--text-secondary); }
-td.sr-col-size { text-align: right; color: var(--text-secondary); }
+.search-table .col-name { width: 35%; }
+.search-table .col-path { width: 30%; }
+.search-table .col-size { width: 15%; }
+.search-table .col-date { width: 20%; }
 </style>

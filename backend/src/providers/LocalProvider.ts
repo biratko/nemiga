@@ -4,6 +4,7 @@ import path from 'node:path'
 import type {FileSystemProvider, OperationContext, MoveContext, DeleteContext, CopyOptions} from './FileSystemProvider.js'
 import type {CopyResult, MoveResult, DeleteResult, MkdirResult, RenameResult, ListResult, FSEntry, ConfirmAction} from '../protocol/fs-types.js'
 import {ErrorCode} from '../protocol/errors.js'
+import {toEntry} from '../utils/fsEntry.js'
 
 class AbortError extends Error {
     constructor() {
@@ -420,45 +421,6 @@ async function copyItem(src: string, dest: string, relPath: string, copyCtx: Cop
     }
 }
 
-async function toEntry(dir: string, de: Dirent): Promise<FSEntry> {
-    const fullPath = path.join(dir, de.name)
-    const info = await fs.lstat(fullPath)
-
-    let type: FSEntry['type'] = 'file'
-    if (de.isDirectory()) type = 'directory'
-    else if (de.isSymbolicLink()) type = 'symlink'
-
-    let symlinkTarget: string | null = null
-    if (de.isSymbolicLink()) {
-        try {
-            symlinkTarget = await fs.readlink(fullPath)
-        } catch {
-            // ignore
-        }
-    }
-
-    let extension: string | null = null
-    if (type === 'file' || type === 'symlink') {
-        const ext = path.extname(de.name).slice(1)
-        if (ext) extension = ext
-    }
-
-    const size = type === 'directory' ? 0 : info.size
-    const mode = info.mode & 0o777
-    const permissions = formatPermissions(mode)
-
-    return {
-        name: de.name,
-        type,
-        size,
-        modified: info.mtime.toISOString(),
-        permissions,
-        extension,
-        hidden: de.name.startsWith('.'),
-        symlink_target: symlinkTarget,
-    }
-}
-
 function mapNodeError(code: string | undefined): ErrorCode {
     switch (code) {
         case 'ENOENT': return ErrorCode.NOT_FOUND
@@ -469,11 +431,3 @@ function mapNodeError(code: string | undefined): ErrorCode {
     }
 }
 
-function formatPermissions(mode: number): string {
-    const chars = 'rwx'
-    let result = ''
-    for (let i = 8; i >= 0; i--) {
-        result += mode & (1 << i) ? chars[2 - (i % 3)] : '-'
-    }
-    return result
-}

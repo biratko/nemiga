@@ -1,5 +1,5 @@
 import type {PanelSort} from './workspace'
-import type {SearchResultEntry} from './panel'
+import type {FSEntry} from './fs'
 
 export type TabMode = 'normal' | 'locked' | 'fixed'
 
@@ -11,7 +11,7 @@ export interface TabState {
     selectedNames: string[]
     mode: TabMode
     fixedPath?: string
-    searchResults?: SearchResultEntry[]
+    searchResults?: FSEntry[]
 }
 
 export interface PanelTabsState {

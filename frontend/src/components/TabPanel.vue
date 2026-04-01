@@ -5,6 +5,7 @@ import {commitFtpArchive} from '@/api/fs'
 import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
 import type {PanelSort} from '@/types/workspace'
 import type {PanelAPI} from '@/types/panel'
+import type {FSEntry} from '@/types/fs'
 import FilePanel from './FilePanel.vue'
 import TabBar from './TabBar.vue'
 
@@ -206,12 +207,12 @@ defineExpose({
     setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
     startRename() { filePanelRef.value?.startRename() },
     calcDirSize() { filePanelRef.value?.calcDirSize() },
-    setSearchResults(results: Array<{name: string; path: string; size: number}>) {
+    setSearchResults(results: FSEntry[], directory: string) {
         snapshotCurrentTab()
         const current = activeTab.value
         const newTab: TabState = {
             id: crypto.randomUUID(),
-            path: current?.path ?? '/',
+            path: directory,
             sort: current ? {...current.sort} : {key: 'name', dir: 'asc'},
             cursorIndex: 0,
             selectedNames: [],

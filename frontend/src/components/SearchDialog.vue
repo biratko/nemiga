@@ -3,13 +3,8 @@ import {ref, computed, onMounted, onUnmounted} from 'vue'
 import {connectSearchWs} from '@/api/ws'
 import type {OperationWsHandle} from '@/api/ws'
 import type {SearchEvents} from '@/types/ws'
+import type {FSEntry} from '@/types/fs'
 import ModalDialog from './ModalDialog.vue'
-
-export interface SearchResultEntry {
-    name: string
-    path: string
-    size: number
-}
 
 const props = defineProps<{
     initialDirectory: string
@@ -17,7 +12,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
     close: []
-    'to-panel': [results: SearchResultEntry[]]
+    'to-panel': [results: FSEntry[], directory: string]
 }>()
 
 type Phase = 'input' | 'searching' | 'done' | 'error'
@@ -41,7 +36,7 @@ const maxDepth = computed(() => {
 })
 
 // Results
-const results = ref<SearchResultEntry[]>([])
+const results = ref<FSEntry[]>([])
 const foundCount = ref(0)
 const scannedCount = ref(0)
 const currentScanning = ref('')
@@ -114,7 +109,7 @@ function stopSearch() {
 
 function toPanel() {
     cleanup()
-    emit('to-panel', results.value)
+    emit('to-panel', results.value, searchDir.value)
 }
 
 function close() {
@@ -256,7 +251,7 @@ onUnmounted(() => {
                     <tbody>
                         <tr v-for="(r, i) in results" :key="i">
                             <td class="col-name">{{ r.name }}</td>
-                            <td class="col-path">{{ r.path }}</td>
+                            <td class="col-path">{{ r.searchPath }}</td>
                             <td class="col-size">{{ formatSize(r.size) }}</td>
                         </tr>
                     </tbody>

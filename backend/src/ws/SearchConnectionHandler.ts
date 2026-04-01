@@ -1,13 +1,15 @@
-import {opendir, stat, readFile} from 'node:fs/promises'
+import {opendir, readFile} from 'node:fs/promises'
 import path from 'node:path'
 import type {WebSocket} from 'ws'
 import picomatch from 'picomatch'
 import type {ProviderRouter} from '../providers/ProviderRouter.js'
+import type {FSEntry} from '../protocol/fs-types.js'
 import type {WsSearchStartCommand, WsSearchClientCommand} from '../protocol/ws-types.js'
 import {ErrorCode} from '../protocol/errors.js'
 import {PathGuardError} from '../providers/pathGuard.js'
 import {BaseConnectionHandler} from './BaseConnectionHandler.js'
 import {fromPosix} from '../utils/platformPath.js'
+import {toEntry} from '../utils/fsEntry.js'
 
 export class SearchConnectionHandler extends BaseConnectionHandler {
     private cancelled = false
@@ -68,10 +70,12 @@ export class SearchConnectionHandler extends BaseConnectionHandler {
             }
         }
 
+        const archiveExts = this.router.getArchiveExtensions()
+
         let found = 0
         let scanned = 0
         let lastProgressTime = 0
-        let batch: Array<{name: string; path: string; size: number}> = []
+        let batch: FSEntry[] = []
         let lastFlushTime = Date.now()
 
         const flushBatch = () => {
@@ -131,16 +135,22 @@ export class SearchConnectionHandler extends BaseConnectionHandler {
                             }
                         }
 
-                        let fileSize = 0
+                        let fsEntry: FSEntry
                         try {
-                            const st = await stat(fullPath)
-                            fileSize = st.size
+                            fsEntry = await toEntry(dirPath, entry)
                         } catch {
-                            // ignore stat errors
+                            continue
                         }
 
-                        const relativePath = path.relative(directory, path.dirname(fullPath))
-                        batch.push({name: entry.name, path: relativePath || '.', size: fileSize})
+                        const relativePath = path.relative(directory, dirPath)
+                        fsEntry.searchPath = relativePath || '.'
+
+                        const lower = entry.name.toLowerCase()
+                        if (archiveExts.some(ext => lower.endsWith(ext))) {
+                            fsEntry.isArchive = true
+                        }
+
+                        batch.push(fsEntry)
                         found++
                         maybeFlush()
                     }
