@@ -14,10 +14,12 @@ function connectOperationWs<T extends EventMap>(path: string): OperationWsHandle
     const ws = new WebSocket(`${proto}://${location.host}${path}`)
     const handlers = new Map<string, Set<EventHandler>>()
     let closedByClient = false
+    let receivedFinalEvent = false
 
     ws.addEventListener('message', (e) => {
         try {
             const msg = JSON.parse(e.data as string)
+            if (msg.event === 'complete' || msg.event === 'error') receivedFinalEvent = true
             handlers.get(msg.event)?.forEach((h) => h(msg as never))
         } catch {
             // ignore malformed messages
@@ -25,7 +27,7 @@ function connectOperationWs<T extends EventMap>(path: string): OperationWsHandle
     })
 
     ws.addEventListener('close', () => {
-        if (closedByClient) return
+        if (closedByClient || receivedFinalEvent) return
         const synthetic = {event: 'error', error: {code: 'WS_DISCONNECTED', message: 'Connection lost'}}
         handlers.get('error')?.forEach((h) => h(synthetic as never))
     })
