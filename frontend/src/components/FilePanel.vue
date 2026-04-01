@@ -17,6 +17,8 @@ import FileIcon from '@/components/FileIcon.vue'
 import FtpArchiveCommitErrorDialog from '@/components/FtpArchiveCommitErrorDialog.vue'
 import { formatSize, formatBytes, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
+import { useColumnResize } from '@/composables/useColumnResize'
+import type { ColumnWidths, SearchColumnWidths } from '@/types/workspace'
 
 const props = defineProps<{
   panelId: string
@@ -29,6 +31,8 @@ const props = defineProps<{
   showHidden?: boolean
   interceptNavigation?: boolean
   searchResults?: FSEntry[]
+  columnWidths?: ColumnWidths
+  searchColumnWidths?: SearchColumnWidths
 }>()
 
 const emit = defineEmits<{
@@ -40,6 +44,8 @@ const emit = defineEmits<{
   pack: [sourcePaths: string[], shiftKey: boolean]
   'open-ftp': []
   'open-file': [path: string]
+  'column-widths-change': [widths: ColumnWidths]
+  'search-column-widths-change': [widths: SearchColumnWidths]
 }>()
 
 const panelContentRef = ref<HTMLElement | null>(null)
@@ -47,6 +53,17 @@ const panelContentRef = ref<HTMLElement | null>(null)
 const { currentPath, entries, error, loadDirectory: rawLoad } = useDirectoryLoader()
 
 const isSearchMode = computed(() => !!props.searchResults)
+
+const searchColumnWidthsRef = ref(props.searchColumnWidths)
+const tableRef = ref<HTMLTableElement | null>(null)
+
+const { activeWidths, columnOrder, onSeparatorMouseDown } = useColumnResize(
+    props.columnWidths,
+    isSearchMode,
+    searchColumnWidthsRef,
+    (w) => emit('column-widths-change', w),
+    (w) => emit('search-column-widths-change', w),
+)
 
 const visibleEntries = computed(() => {
   const src = isSearchMode.value ? props.searchResults! : entries.value
@@ -531,17 +548,22 @@ onBeforeUnmount(() => {
       </button>
     </div>
     <div class="panel-content" ref="panelContentRef">
-      <table class="file-table" :class="{ 'search-table': isSearchMode }">
+      <table ref="tableRef" class="file-table" :class="{ 'search-table': isSearchMode }">
         <thead>
           <tr>
-            <th class="col-name sortable" @click="setSort('name')">
+            <th class="col-name sortable" :style="{ width: activeWidths.name + '%' }" @click="setSort('name')">
               Name <span class="sort-indicator">{{ sortKey === 'name' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+              <span class="col-separator" @mousedown.stop="onSeparatorMouseDown($event, 'name', columnOrder[1], tableRef!)"></span>
             </th>
-            <th v-if="isSearchMode" class="col-path">Path</th>
-            <th class="col-size sortable" @click="setSort('size')">
+            <th v-if="isSearchMode" class="col-path" :style="{ width: (activeWidths as any).path + '%' }">
+              Path
+              <span class="col-separator" @mousedown.stop="onSeparatorMouseDown($event, 'path', 'size', tableRef!)"></span>
+            </th>
+            <th class="col-size sortable" :style="{ width: activeWidths.size + '%' }" @click="setSort('size')">
               Size <span class="sort-indicator">{{ sortKey === 'size' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
+              <span class="col-separator" @mousedown.stop="onSeparatorMouseDown($event, 'size', 'date', tableRef!)"></span>
             </th>
-            <th class="col-date sortable" @click="setSort('modified')">
+            <th class="col-date sortable" :style="{ width: activeWidths.date + '%' }" @click="setSort('modified')">
               Modified <span class="sort-indicator">{{ sortKey === 'modified' ? (sortDir === 'asc' ? '↑' : '↓') : '' }}</span>
             </th>
           </tr>
@@ -763,9 +785,8 @@ onBeforeUnmount(() => {
   color: var(--accent);
 }
 
-.col-name { width: 60%; }
-.col-size { width: 20%; text-align: right; }
-.col-date { width: 20%; text-align: right; }
+.col-size { text-align: right; }
+.col-date { text-align: right; }
 
 .name-cell {
   display: flex;
@@ -893,8 +914,24 @@ onBeforeUnmount(() => {
   font-size: var(--font-size-sm);
 }
 
-.search-table .col-name { width: 35%; }
-.search-table .col-path { width: 30%; }
-.search-table .col-size { width: 15%; }
-.search-table .col-date { width: 20%; }
+
+.col-separator {
+    position: absolute;
+    right: -2px;
+    top: 25%;
+    height: 50%;
+    width: 5px;
+    cursor: col-resize;
+    z-index: 1;
+}
+
+.col-separator::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border);
+}
 </style>
