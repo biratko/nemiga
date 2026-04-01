@@ -14,7 +14,8 @@ import SettingsDialog from './components/SettingsDialog.vue'
 import type {SettingsState} from '@/types/settings'
 import {useActionMap} from '@/composables/useActionMap'
 import type {PanelAPI} from '@/types/panel'
-import type {PanelSort, PanelState} from '@/types/workspace'
+import type {PanelSort, PanelState, ColumnWidths, SearchColumnWidths} from '@/types/workspace'
+import {DEFAULT_WIDTHS, DEFAULT_SEARCH_WIDTHS} from '@/composables/useColumnResize'
 import type {TabState, PanelTabsState} from '@/types/tabs'
 import {loadSettings} from '@/api/settings'
 import {useFileOperations, type CopyOp, type MoveOp} from '@/composables/useFileOperations'
@@ -253,6 +254,16 @@ function onSettingsClose(settings?: SettingsState) {
 const DEFAULT_SORT: PanelSort = {key: 'name', dir: 'asc'}
 const panelState = ref<PanelState | null>(null)
 
+const columnWidths = ref<{
+    left: ColumnWidths
+    right: ColumnWidths
+    search: SearchColumnWidths
+}>({
+    left: {...DEFAULT_WIDTHS},
+    right: {...DEFAULT_WIDTHS},
+    search: {...DEFAULT_SEARCH_WIDTHS},
+})
+
 function defaultTab(path: string): TabState {
     return {id: crypto.randomUUID(), path, sort: {...DEFAULT_SORT}, cursorIndex: 0, selectedNames: [], mode: 'normal'}
 }
@@ -284,6 +295,11 @@ async function loadWorkspace() {
                     activeTabIndex: ws.panels.right.activeTabIndex ?? 0,
                 },
             }
+            if (ws.columnWidths) {
+                if (ws.columnWidths.left) columnWidths.value.left = {...DEFAULT_WIDTHS, ...ws.columnWidths.left}
+                if (ws.columnWidths.right) columnWidths.value.right = {...DEFAULT_WIDTHS, ...ws.columnWidths.right}
+                if (ws.columnWidths.search) columnWidths.value.search = {...DEFAULT_SEARCH_WIDTHS, ...ws.columnWidths.search}
+            }
         }
     } catch {
         // ignore, panels will use default path
@@ -303,7 +319,7 @@ async function saveWorkspace() {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                workspace: {panels: panelState.value},
+                workspace: {panels: panelState.value, columnWidths: columnWidths.value},
             }),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -330,6 +346,16 @@ async function onNavigate(_panel: 'left' | 'right', _path: string) {
 }
 
 function onSortChange(_panel: 'left' | 'right', _sort: PanelSort) {
+    saveWorkspace()
+}
+
+function onColumnWidthsChange(panel: 'left' | 'right', widths: ColumnWidths) {
+    columnWidths.value[panel] = widths
+    saveWorkspace()
+}
+
+function onSearchColumnWidthsChange(widths: SearchColumnWidths) {
+    columnWidths.value.search = widths
     saveWorkspace()
 }
 
@@ -472,9 +498,13 @@ onUnmounted(() => {
                     :is-active="activePanel === 'left'"
                     :show-hidden="currentSettings.showHidden ?? false"
                     :style="{ flex: '0 0 calc(' + splitPercent + '% - var(--splitter-width) / 2)' }"
+                    :column-widths="columnWidths.left"
+                    :search-column-widths="columnWidths.search"
                     @tabs-change="state => onTabsChange('left', state)"
                     @navigate="path => onNavigate('left', path)"
                     @sort-change="sort => onSortChange('left', sort)"
+                    @column-widths-change="widths => onColumnWidthsChange('left', widths)"
+                    @search-column-widths-change="onSearchColumnWidthsChange"
                     @drop="onDrop"
                     @extract="startExtract"
                     @pack="startPack"
@@ -510,9 +540,13 @@ onUnmounted(() => {
                     :tabs-state="panelState.right"
                     :is-active="activePanel === 'right'"
                     :show-hidden="currentSettings.showHidden ?? false"
+                    :column-widths="columnWidths.right"
+                    :search-column-widths="columnWidths.search"
                     @tabs-change="state => onTabsChange('right', state)"
                     @navigate="path => onNavigate('right', path)"
                     @sort-change="sort => onSortChange('right', sort)"
+                    @column-widths-change="widths => onColumnWidthsChange('right', widths)"
+                    @search-column-widths-change="onSearchColumnWidthsChange"
                     @drop="onDrop"
                     @extract="startExtract"
                     @pack="startPack"

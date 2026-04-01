@@ -3,7 +3,7 @@ import {ref, computed} from 'vue'
 import {ftpDisconnect} from '@/api/ftp'
 import {commitFtpArchive} from '@/api/fs'
 import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
-import type {PanelSort} from '@/types/workspace'
+import type {PanelSort, ColumnWidths, SearchColumnWidths} from '@/types/workspace'
 import type {PanelAPI} from '@/types/panel'
 import type {FSEntry} from '@/types/fs'
 import FilePanel from './FilePanel.vue'
@@ -14,12 +14,16 @@ const props = defineProps<{
     tabsState: PanelTabsState
     isActive: boolean
     showHidden: boolean
+    columnWidths: ColumnWidths
+    searchColumnWidths: SearchColumnWidths
 }>()
 
 const emit = defineEmits<{
     'tabs-change': [state: PanelTabsState]
     navigate: [path: string]
     'sort-change': [sort: PanelSort]
+    'column-widths-change': [widths: ColumnWidths]
+    'search-column-widths-change': [widths: SearchColumnWidths]
     drop: [op: 'copy' | 'move', sources: string[], destination: string]
     extract: [archivePath: string, shiftKey: boolean]
     pack: [sourcePaths: string[], shiftKey: boolean]
@@ -247,6 +251,10 @@ defineExpose({
             @before-navigate="onBeforeNavigate"
             @navigate="onNavigate"
             @sort-change="onSortChange"
+            :column-widths="columnWidths"
+            :search-column-widths="searchColumnWidths"
+            @column-widths-change="(w: any) => emit('column-widths-change', w)"
+            @search-column-widths-change="(w: any) => emit('search-column-widths-change', w)"
             @drop="onDrop"
             @extract="onExtract"
             @pack="onPack"
