@@ -35,13 +35,37 @@ function isValidPanel(v: unknown): v is PanelTabsState {
     return p.tabs.every(isValidTab)
 }
 
+function isValidColumnWidths(v: unknown): v is import('../protocol/workspace-types.js').ColumnWidths {
+    if (!v || typeof v !== 'object') return false
+    const c = v as Record<string, unknown>
+    return typeof c.name === 'number' && typeof c.size === 'number' && typeof c.date === 'number'
+}
+
+function isValidSearchColumnWidths(v: unknown): v is import('../protocol/workspace-types.js').SearchColumnWidths {
+    if (!isValidColumnWidths(v)) return false
+    const c = v as unknown as Record<string, unknown>
+    return typeof c.path === 'number'
+}
+
 function sanitizeWorkspace(raw: unknown): WorkspaceState | null {
     if (!raw || typeof raw !== 'object') return null
     const w = raw as Record<string, unknown>
     if (!w.panels || typeof w.panels !== 'object') return null
     const panels = w.panels as Record<string, unknown>
     if (!isValidPanel(panels.left) || !isValidPanel(panels.right)) return null
-    return {panels: {left: panels.left, right: panels.right}}
+
+    const result: WorkspaceState = {panels: {left: panels.left, right: panels.right}}
+
+    if (w.columnWidths && typeof w.columnWidths === 'object') {
+        const cw = w.columnWidths as Record<string, unknown>
+        const columnWidths: WorkspaceState['columnWidths'] = {}
+        if (isValidColumnWidths(cw.left)) columnWidths.left = cw.left
+        if (isValidColumnWidths(cw.right)) columnWidths.right = cw.right
+        if (isValidSearchColumnWidths(cw.search)) columnWidths.search = cw.search
+        if (Object.keys(columnWidths).length > 0) result.columnWidths = columnWidths
+    }
+
+    return result
 }
 
 export function makeGetWorkspaceHandler(workspaceService: WorkspaceService) {
