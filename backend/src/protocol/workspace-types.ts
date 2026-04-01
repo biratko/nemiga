@@ -3,6 +3,16 @@ export interface PanelSort {
     dir: 'asc' | 'desc'
 }
 
+export interface ColumnWidths {
+    name: number
+    size: number
+    date: number
+}
+
+export interface SearchColumnWidths extends ColumnWidths {
+    path: number
+}
+
 export type TabMode = 'normal' | 'locked' | 'fixed'
 
 export interface TabState {
@@ -24,5 +34,10 @@ export interface WorkspaceState {
     panels: {
         left: PanelTabsState
         right: PanelTabsState
+    }
+    columnWidths?: {
+        left?: ColumnWidths
+        right?: ColumnWidths
+        search?: SearchColumnWidths
     }
 }
