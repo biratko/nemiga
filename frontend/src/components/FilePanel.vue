@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import type { FSEntry } from '@/types/fs'
 import { useDirectoryLoader } from '@/composables/useDirectoryLoader'
 import { useSorting } from '@/composables/useSorting'
@@ -55,6 +55,7 @@ const { currentPath, entries, error, loadDirectory: rawLoad } = useDirectoryLoad
 const isSearchMode = computed(() => !!props.searchResults)
 
 const searchColumnWidthsRef = ref(props.searchColumnWidths)
+watch(() => props.searchColumnWidths, (v) => { if (v) searchColumnWidthsRef.value = v })
 const tableRef = ref<HTMLTableElement | null>(null)
 
 const { activeWidths, columnOrder, onSeparatorMouseDown } = useColumnResize(
@@ -908,7 +909,6 @@ onBeforeUnmount(() => {
 }
 
 .col-path {
-  width: 30%;
   text-align: left;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
