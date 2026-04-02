@@ -765,6 +765,7 @@ onBeforeUnmount(() => {
 .file-table th {
   position: sticky;
   top: 0;
+  z-index: 1;
   background: var(--bg-header);
   padding: 3px 8px;
   text-align: left;

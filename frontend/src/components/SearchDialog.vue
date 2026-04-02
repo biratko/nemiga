@@ -59,8 +59,10 @@ function cleanup() {
 }
 
 function startSearch() {
+    cleanup()
     phase.value = 'searching'
     collapsed.value = true
+    opError.value = null
     results.value = []
     foundCount.value = 0
     scannedCount.value = 0
@@ -121,7 +123,6 @@ function close() {
 }
 
 function toggleCollapsed() {
-    if (phase.value === 'searching') return
     collapsed.value = !collapsed.value
 }
 
@@ -136,7 +137,7 @@ function onKeydown(e: KeyboardEvent) {
     e.stopPropagation()
     if (e.key === 'Escape') {
         close()
-    } else if (e.key === 'Enter' && phase.value === 'input') {
+    } else if (e.key === 'Enter' && phase.value !== 'searching') {
         startSearch()
     }
 }
@@ -150,78 +151,81 @@ onUnmounted(() => {
 
 <template>
     <ModalDialog title="Search" :wide="true">
+        <div class="search-content">
         <!-- Parameters block -->
-        <div v-if="!collapsed" class="params-block">
-            <div class="field">
-                <label class="field-label">File name mask</label>
-                <input
-                    class="field-input"
-                    v-model="fileMask"
-                    placeholder="*.ts, *.vue"
-                    :disabled="phase === 'searching'"
-                />
+        <div class="params-section">
+            <div class="params-header" @click="toggleCollapsed">
+                <span class="params-chevron">{{ collapsed ? '▸' : '▾' }}</span>
+                <span v-if="collapsed" class="summary-text">{{ summaryText }}</span>
+                <span v-else class="params-header-label">Search parameters</span>
             </div>
-
-            <div class="field">
-                <label class="checkbox-label">
-                    <input type="checkbox" v-model="contentEnabled" :disabled="phase === 'searching'">
-                    Search in file content
-                </label>
-                <template v-if="contentEnabled">
+            <div v-if="!collapsed" class="params-block">
+                <div class="field">
+                    <label class="field-label">File name mask</label>
                     <input
                         class="field-input"
-                        v-model="contentSearch"
-                        placeholder="Search text or regex"
+                        v-model="fileMask"
+                        placeholder="*.ts, *.vue"
                         :disabled="phase === 'searching'"
                     />
-                    <div class="content-options">
-                        <label class="checkbox-label small">
-                            <input type="checkbox" v-model="caseSensitive" :disabled="phase === 'searching'">
-                            Case sensitive
-                        </label>
-                        <label class="checkbox-label small">
-                            <input type="checkbox" v-model="useRegex" :disabled="phase === 'searching'">
-                            Regex
-                        </label>
-                    </div>
-                </template>
-            </div>
+                </div>
 
-            <div class="field">
-                <label class="field-label">Search in</label>
-                <input
-                    class="field-input"
-                    v-model="searchDir"
-                    :disabled="phase === 'searching'"
-                />
-            </div>
+                <div class="field">
+                    <label class="checkbox-label">
+                        <input type="checkbox" v-model="contentEnabled" :disabled="phase === 'searching'">
+                        Search in file content
+                    </label>
+                    <template v-if="contentEnabled">
+                        <input
+                            class="field-input"
+                            v-model="contentSearch"
+                            placeholder="Search text or regex"
+                            :disabled="phase === 'searching'"
+                        />
+                        <div class="content-options">
+                            <label class="checkbox-label small">
+                                <input type="checkbox" v-model="caseSensitive" :disabled="phase === 'searching'">
+                                Case sensitive
+                            </label>
+                            <label class="checkbox-label small">
+                                <input type="checkbox" v-model="useRegex" :disabled="phase === 'searching'">
+                                Regex
+                            </label>
+                        </div>
+                    </template>
+                </div>
 
-            <div class="field">
-                <label class="field-label">Max depth</label>
-                <div class="depth-row">
+                <div class="field">
+                    <label class="field-label">Search in</label>
                     <input
-                        class="field-input depth-input"
-                        v-model="maxDepthInput"
-                        placeholder="∞"
+                        class="field-input"
+                        v-model="searchDir"
                         :disabled="phase === 'searching'"
                     />
-                    <span class="depth-hint">empty = unlimited, 0 = only this directory</span>
+                </div>
+
+                <div class="field">
+                    <label class="field-label">Max depth</label>
+                    <div class="depth-row">
+                        <input
+                            class="field-input depth-input"
+                            v-model="maxDepthInput"
+                            placeholder="∞"
+                            :disabled="phase === 'searching'"
+                        />
+                        <span class="depth-hint">empty = unlimited, 0 = only this directory</span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="checkbox-label small disabled">
+                        <input type="checkbox" disabled>
+                        Search in archives
+                    </label>
                 </div>
             </div>
-
-            <div class="field">
-                <label class="checkbox-label small disabled">
-                    <input type="checkbox" disabled>
-                    Search in archives
-                </label>
-            </div>
         </div>
 
-        <!-- Collapsed summary -->
-        <div v-else class="params-summary" @click="toggleCollapsed">
-            <span class="summary-text">{{ summaryText }}</span>
-            <span class="summary-chevron">{{ phase === 'searching' ? '' : '▸' }}</span>
-        </div>
 
         <!-- Progress -->
         <div v-if="phase === 'searching'" class="progress-section">
@@ -274,20 +278,31 @@ onUnmounted(() => {
                 >To panel</button>
             </div>
             <div class="footer-right">
-                <button v-if="phase === 'input'" class="btn-primary" @click="startSearch">Search</button>
+                <button v-if="phase !== 'searching'" class="btn-primary" @click="startSearch">Search</button>
                 <button v-if="phase === 'searching'" @click="stopSearch">Stop</button>
                 <button @click="close">{{ phase === 'input' ? 'Cancel' : 'Close' }}</button>
             </div>
+        </div>
         </div>
     </ModalDialog>
 </template>
 
 <style scoped>
+.search-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .params-block {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-top: 1px solid var(--border);
 }
 
 .field {
@@ -356,27 +371,41 @@ onUnmounted(() => {
     color: var(--text-secondary);
 }
 
-.params-summary {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 10px;
-    background: var(--bg-header);
+.params-section {
     border: 1px solid var(--border);
     border-radius: 3px;
-    cursor: pointer;
     margin-bottom: 10px;
+}
+
+.params-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    cursor: pointer;
     font-size: 12px;
     color: var(--text-secondary);
+    user-select: none;
+    background: var(--bg-header);
 }
 
-.params-summary:hover {
-    background: var(--bg-row-hover);
+.params-header:hover {
+    color: var(--text-primary);
 }
 
-.summary-chevron {
+.params-chevron {
     font-size: 10px;
-    color: var(--text-secondary);
+    color: var(--accent);
+}
+
+.params-header-label {
+    font-size: 12px;
+}
+
+.summary-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .progress-section {
@@ -405,10 +434,15 @@ onUnmounted(() => {
 
 .results-section {
     margin-bottom: 10px;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .results-table-wrap {
-    max-height: 300px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 3px;

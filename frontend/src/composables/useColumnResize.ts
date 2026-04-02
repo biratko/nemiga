@@ -43,7 +43,7 @@ export function useColumnResize(
         dragLeftCol = leftCol
         dragRightCol = rightCol
         startX = e.clientX
-        tableWidth = tableEl.offsetWidth
+        tableWidth = tableEl.getBoundingClientRect().width
 
         const w = activeWidths.value as Record<string, number>
         startLeftWidth = w[leftCol]
