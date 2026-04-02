@@ -1,15 +1,24 @@
-import SftpClient from 'ssh2-sftp-client'
 import type {Readable, Writable} from 'node:stream'
-import {PassThrough} from 'node:stream'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {FtpAdapter} from './FtpAdapter.js'
 import path from 'node:path'
 
+// ssh2 has native bindings that may not be available in all environments (e.g. snap)
+// Use try/catch so the app starts even without it — error surfaces only when SFTP is used
+let SftpClient: any
+try {
+    SftpClient = require('ssh2-sftp-client')
+} catch {
+    // ssh2 unavailable
+}
+
 export class SftpAdapter implements FtpAdapter {
-    private client = new SftpClient()
+    private client: any = null
     private connected = false
 
     async connect(host: string, port: number, username: string, password: string): Promise<void> {
+        if (!SftpClient) throw new Error('SFTP is not available in this environment (ssh2 module not found)')
+        this.client = new SftpClient()
         await this.client.connect({ host, port, username, password, readyTimeout: 10000 })
         this.connected = true
     }
@@ -18,7 +27,7 @@ export class SftpAdapter implements FtpAdapter {
 
     async list(remotePath: string): Promise<FSEntry[]> {
         const items = await this.client.list(remotePath)
-        return items.map((item) => this.toFSEntry(item))
+        return items.map((item: any) => this.toFSEntry(item))
     }
 
     async mkdir(remotePath: string): Promise<void> { await this.client.mkdir(remotePath, true) }
@@ -48,7 +57,7 @@ export class SftpAdapter implements FtpAdapter {
     isConnected(): boolean { return this.connected }
     async sendNoop(): Promise<void> { await this.client.stat('/') }
 
-    private toFSEntry(item: SftpClient.FileInfo): FSEntry {
+    private toFSEntry(item: any): FSEntry {
         const isDir = item.type === 'd'
         const isSymlink = item.type === 'l'
         const ext = !isDir ? (path.extname(item.name).slice(1) || null) : null

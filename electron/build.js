@@ -8,7 +8,7 @@ await build({
     target: 'node20',
     format: 'esm',
     outdir: 'dist',
-    external: ['electron', '@node-rs/crc32'],
+    external: ['electron', '@node-rs/crc32', 'cpu-features', 'ssh2', 'ssh2-sftp-client', 'compressjs'],
     banner: {
         // Needed for ESM compatibility with __dirname/__filename in bundled code
         js: `

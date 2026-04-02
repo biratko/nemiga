@@ -1,5 +1,5 @@
 {
-  "name": "nemiga-electron",
+  "name": "nemiga",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,10 +12,12 @@
     "start": "electron dist/main.js",
     "dev": "node build.js && electron dist/main.js",
     "dist": "node build.js && electron-builder --linux AppImage",
-    "dist:deb": "node build.js && electron-builder --linux deb"
+    "dist:deb": "node build.js && electron-builder --linux deb",
+    "dist:snap": "node build.js && electron-builder --linux snap"
   },
   "dependencies": {
-    "@node-rs/crc32": "^1.10.6"
+    "@node-rs/crc32": "^1.10.6",
+    "compressjs": "^1.0.3"
   },
   "devDependencies": {
     "electron": "^35.0.0",
@@ -31,7 +33,9 @@
     "productName": "Nemiga",
     "files": [
       "dist/main.js",
-      "dist/preload.js"
+      "dist/preload.js",
+      "node_modules/compressjs/**",
+      "node_modules/amdefine/**"
     ],
     "extraResources": [
       {
@@ -40,9 +44,25 @@
       }
     ],
     "linux": {
-      "target": ["AppImage"],
+      "target": ["AppImage", "snap"],
       "category": "System",
-      "artifactName": "${productName}-${version}"
+      "artifactName": "${productName}-${version}.${ext}"
+    },
+    "snap": {
+      "confinement": "strict",
+      "grade": "stable",
+      "plugs": [
+        "home",
+        "removable-media",
+        "network",
+        "x11",
+        "desktop",
+        "desktop-legacy",
+        "wayland",
+        "unity7",
+        "browser-support",
+        "opengl"
+      ]
     },
     "mac": {
       "target": ["dmg"],

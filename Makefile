@@ -1,5 +1,5 @@
 .PHONY: all build frontend backend clean dev-frontend dev-backend install start \
-       install-electron dev-electron build-electron dist-electron dist-electron-deb
+       install-electron dev-electron build-electron dist-electron dist-electron-deb dist-electron-snap
 
 all: build
 
@@ -44,6 +44,9 @@ dist-electron: frontend
 
 dist-electron-deb: frontend
 	cd electron && npm run dist:deb
+
+dist-electron-snap: frontend
+	cd electron && npm run dist:snap
 
 clean:
 	rm -rf backend/dist backend/node_modules frontend/dist frontend/node_modules \

@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a2e"/>
+      <stop offset="100%" stop-color="#16213e"/>
+    </linearGradient>
+    <linearGradient id="river" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4fc3f7"/>
+      <stop offset="50%" stop-color="#29b6f6"/>
+      <stop offset="100%" stop-color="#0288d1"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="256" height="256" rx="40" fill="url(#bg)"/>
+
+  <!-- River — filled shape, narrow at top, wide at bottom for perspective -->
+  <path d="M124 20 C106 50, 142 70, 125 100 C108 130, 146 150, 129 180 C112 210, 143 225, 118 244
+           L138 244 C153 225, 128 210, 141 180 C154 150, 122 130, 135 100 C148 70, 114 50, 132 20 Z"
+        fill="url(#river)" opacity="0.9"/>
+
+  <!-- River highlight -->
+  <path d="M128 20
+           C110 50, 145 70, 130 100
+           C115 130, 150 150, 135 180
+           C120 210, 148 225, 128 244"
+        stroke="#b3e5fc" stroke-width="3" fill="none"
+        stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+
+  <!-- Left bushes (7) -->
+  <circle cx="70" cy="38" r="7" fill="#4caf50" opacity="0.85"/>
+  <circle cx="62" cy="34" r="5" fill="#66bb6a" opacity="0.8"/>
+
+  <circle cx="55" cy="72" r="8" fill="#43a047" opacity="0.8"/>
+  <circle cx="47" cy="68" r="5" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="80" cy="100" r="7" fill="#4caf50" opacity="0.85"/>
+  <circle cx="72" cy="96" r="5" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="48" cy="132" r="8" fill="#43a047" opacity="0.8"/>
+  <circle cx="40" cy="128" r="5" fill="#4caf50" opacity="0.75"/>
+
+  <circle cx="72" cy="160" r="7" fill="#66bb6a" opacity="0.85"/>
+  <circle cx="64" cy="156" r="5" fill="#43a047" opacity="0.75"/>
+
+  <circle cx="52" cy="195" r="8" fill="#4caf50" opacity="0.8"/>
+  <circle cx="44" cy="191" r="6" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="68" cy="225" r="7" fill="#43a047" opacity="0.85"/>
+  <circle cx="60" cy="221" r="5" fill="#4caf50" opacity="0.75"/>
+
+  <!-- Right bushes (7) -->
+  <circle cx="186" cy="45" r="7" fill="#4caf50" opacity="0.85"/>
+  <circle cx="194" cy="41" r="5" fill="#66bb6a" opacity="0.8"/>
+
+  <circle cx="200" cy="80" r="8" fill="#43a047" opacity="0.8"/>
+  <circle cx="208" cy="76" r="5" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="178" cy="110" r="7" fill="#4caf50" opacity="0.85"/>
+  <circle cx="186" cy="106" r="5" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="205" cy="140" r="8" fill="#43a047" opacity="0.8"/>
+  <circle cx="213" cy="136" r="5" fill="#4caf50" opacity="0.75"/>
+
+  <circle cx="182" cy="172" r="7" fill="#66bb6a" opacity="0.85"/>
+  <circle cx="190" cy="168" r="5" fill="#43a047" opacity="0.75"/>
+
+  <circle cx="198" cy="205" r="8" fill="#4caf50" opacity="0.8"/>
+  <circle cx="206" cy="201" r="6" fill="#66bb6a" opacity="0.75"/>
+
+  <circle cx="180" cy="232" r="7" fill="#43a047" opacity="0.85"/>
+  <circle cx="188" cy="228" r="5" fill="#4caf50" opacity="0.75"/>
+</svg>
