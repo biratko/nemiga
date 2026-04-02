@@ -109,12 +109,16 @@ export class WorkspaceService {
 
         const home = os.homedir()
         const panels = parsed.panels as Record<string, unknown> | undefined
-        return {
+        const result: WorkspaceState = {
             panels: {
                 left: await validatePanelTabs(panels?.left, home),
                 right: await validatePanelTabs(panels?.right, home),
             },
         }
+        if (parsed.columnWidths && typeof parsed.columnWidths === 'object') {
+            result.columnWidths = parsed.columnWidths as WorkspaceState['columnWidths']
+        }
+        return result
     }
 
     async save(state: WorkspaceState): Promise<void> {
