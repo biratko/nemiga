@@ -7,6 +7,7 @@ export interface SettingsState {
     showHidden?: boolean
     followSymlinks?: boolean
     theme?: string
+    zoom?: number
     editor?: string
     viewer?: string
     terminal?: string

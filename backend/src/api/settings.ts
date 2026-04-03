@@ -5,7 +5,7 @@ import {ErrorCode} from '../protocol/errors.js'
 
 function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     const result: SettingsState = {}
-    const allowed = new Set(['showHidden', 'followSymlinks', 'theme', 'editor', 'viewer', 'terminal', 'showToolbar', 'fileTypes', 'toastDurationMs', 'actionBindings', 'modifiers'])
+    const allowed = new Set(['showHidden', 'followSymlinks', 'theme', 'zoom', 'editor', 'viewer', 'terminal', 'showToolbar', 'fileTypes', 'toastDurationMs', 'actionBindings', 'modifiers'])
 
     for (const key of Object.keys(raw)) {
         if (!allowed.has(key)) return null
@@ -22,6 +22,10 @@ function sanitizeSettings(raw: Record<string, unknown>): SettingsState | null {
     if ('theme' in raw) {
         if (typeof raw.theme !== 'string') return null
         result.theme = raw.theme
+    }
+    if ('zoom' in raw) {
+        if (typeof raw.zoom !== 'number') return null
+        result.zoom = raw.zoom
     }
     if ('editor' in raw) {
         if (raw.editor !== undefined && typeof raw.editor !== 'string') return null

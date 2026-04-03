@@ -77,6 +77,7 @@ async function save() {
         actionBindings: actionBindings.value,
         modifiers: modifierBindings.value,
         theme: theme.value,
+        zoom: zoom.value,
         editor: editor.value,
         viewer: viewer.value,
         terminal: terminal.value,
