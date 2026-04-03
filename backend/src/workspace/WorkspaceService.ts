@@ -67,6 +67,7 @@ async function validateTab(tab: TabState, fallbackPath: string): Promise<TabStat
         selectedNames: Array.isArray(tab.selectedNames) ? tab.selectedNames.filter(n => typeof n === 'string') : [],
         mode: validMode,
         fixedPath: typeof tab.fixedPath === 'string' ? tab.fixedPath : undefined,
+        customName: typeof tab.customName === 'string' ? tab.customName : undefined,
     }
 }
 

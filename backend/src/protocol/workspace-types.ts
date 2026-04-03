@@ -23,6 +23,7 @@ export interface TabState {
     selectedNames?: string[]
     mode: TabMode
     fixedPath?: string
+    customName?: string
 }
 
 export interface PanelTabsState {

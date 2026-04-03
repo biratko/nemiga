@@ -44,6 +44,7 @@ const emit = defineEmits<{
   pack: [sourcePaths: string[], shiftKey: boolean]
   'open-ftp': []
   'open-file': [path: string]
+  'open-in-new-tab': [path: string]
   'column-widths-change': [widths: ColumnWidths]
   'search-column-widths-change': [widths: SearchColumnWidths]
 }>()
@@ -266,10 +267,14 @@ function setSort(key: 'name' | 'size' | 'modified') {
   emit('sort-change', { key: sortKey.value, dir: sortDir.value })
 }
 
-async function navigate(entry: FSEntry) {
+async function navigate(entry: FSEntry, event?: MouseEvent | KeyboardEvent) {
   const dir = entryDir(entry)
   if (entry.type === 'directory') {
     const target = joinPath(dir, entry.name)
+    if (event?.ctrlKey || event?.metaKey) {
+      emit('open-in-new-tab', target)
+      return
+    }
     if (props.interceptNavigation) {
       emit('before-navigate', target)
       return
@@ -279,6 +284,10 @@ async function navigate(entry: FSEntry) {
   } else if (entry.isArchive) {
     const archivePath = joinPath(dir, entry.name)
     const target = archivePath + '::/'
+    if (event?.ctrlKey || event?.metaKey) {
+      emit('open-in-new-tab', target)
+      return
+    }
     if (props.interceptNavigation) {
       emit('before-navigate', target)
       return
@@ -345,13 +354,13 @@ async function goUp() {
   }
 }
 
-function enterCursor() {
+function enterCursor(event?: KeyboardEvent) {
   if (cursorIndex.value === 0) {
     goUp()
     return
   }
   const entry = sortedEntries.value[cursorIndex.value - 1]
-  if (entry) navigate(entry)
+  if (entry) navigate(entry, event)
 }
 
 // Directory size calculation
@@ -606,7 +615,7 @@ onBeforeUnmount(() => {
             @dragleave="onDragLeaveEntry"
             @drop.stop="handleDrop($event, entry)"
             @click="setCursor(globalIndex)"
-            @dblclick="navigate(entry)"
+            @dblclick="navigate(entry, $event)"
             @mousedown.right.prevent="onRowRightMouseDown($event, entry)"
             @mouseenter="rightMouseEnter(entry)"
           >

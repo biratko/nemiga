@@ -409,7 +409,7 @@ function handleKeydown(e: KeyboardEvent) {
             break
         }
         case 'navigate.in':
-            panel?.enterCursor()
+            panel?.enterCursor(e)
             break
         case 'navigate.up':
             panel?.goUp()
@@ -454,6 +454,9 @@ onMounted(async () => {
         currentSettings.value = await loadSettings()
         loadActionMap(currentSettings.value.actionBindings, currentSettings.value.modifiers)
         initTheme(currentSettings.value.theme)
+        if (currentSettings.value.zoom) {
+            document.documentElement.style.zoom = String(currentSettings.value.zoom)
+        }
         if (currentSettings.value.toastDurationMs) {
             setToastDuration(currentSettings.value.toastDurationMs)
         }

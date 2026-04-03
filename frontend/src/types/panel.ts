@@ -9,7 +9,7 @@ export interface PanelAPI {
     loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]}): Promise<void>
     moveCursorUp(): void
     moveCursorDown(): void
-    enterCursor(): void
+    enterCursor(event?: KeyboardEvent): void
     goUp(): Promise<void>
     toggleCursorSelection(): void
     setKeyboardActive(val: boolean): void

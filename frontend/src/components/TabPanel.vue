@@ -148,6 +148,13 @@ function reorderTabs(from: number, to: number) {
     emitTabsChange()
 }
 
+function renameTab(index: number, name: string) {
+    const tab = tabs.value[index]
+    tab.customName = name
+    tab.mode = 'locked'
+    emitTabsChange()
+}
+
 function setTabMode(index: number, mode: TabMode) {
     const tab = tabs.value[index]
     tab.mode = mode
@@ -165,6 +172,10 @@ function onBeforeNavigate(path: string) {
     if (tab?.mode === 'locked') {
         createTab(path)
     }
+}
+
+function onOpenInNewTab(path: string) {
+    createTab(path)
 }
 
 function onNavigate(path: string) {
@@ -205,7 +216,7 @@ defineExpose({
     loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]}) { return filePanelRef.value?.loadDirectory(path, restoreState) },
     moveCursorUp() { filePanelRef.value?.moveCursorUp() },
     moveCursorDown() { filePanelRef.value?.moveCursorDown() },
-    enterCursor() { filePanelRef.value?.enterCursor() },
+    enterCursor(event?: KeyboardEvent) { filePanelRef.value?.enterCursor(event) },
     goUp() { filePanelRef.value?.goUp() },
     toggleCursorSelection() { filePanelRef.value?.toggleCursorSelection() },
     setKeyboardActive(val: boolean) { filePanelRef.value?.setKeyboardActive(val) },
@@ -249,6 +260,7 @@ defineExpose({
             :search-results="activeTab.searchResults"
             :intercept-navigation="activeTab.mode === 'locked'"
             @before-navigate="onBeforeNavigate"
+            @open-in-new-tab="onOpenInNewTab"
             @navigate="onNavigate"
             @sort-change="onSortChange"
             :column-widths="columnWidths"
@@ -270,6 +282,7 @@ defineExpose({
                     @close-others="closeOtherTabs"
                     @reorder="reorderTabs"
                     @set-mode="setTabMode"
+                    @rename="renameTab"
                 />
             </template>
         </FilePanel>

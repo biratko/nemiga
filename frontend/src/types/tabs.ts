@@ -12,6 +12,7 @@ export interface TabState {
     mode: TabMode
     fixedPath?: string
     searchResults?: FSEntry[]
+    customName?: string
 }
 
 export interface PanelTabsState {

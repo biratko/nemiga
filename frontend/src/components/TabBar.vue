@@ -17,6 +17,7 @@ const emit = defineEmits<{
     'close-others': [index: number]
     reorder: [fromIndex: number, toIndex: number]
     'set-mode': [index: number, mode: TabMode]
+    rename: [index: number, name: string]
 }>()
 
 const ctxMenu = ref<{x: number; y: number; tabIndex: number} | null>(null)
@@ -42,6 +43,7 @@ function extractFtpHost(path: string): string | null {
 }
 
 function tabLabel(tab: TabState): string {
+    if (tab.customName) return tab.customName
     if (tab.searchResults) return 'Search'
     if (tab.path === '/') return '/'
     const lastSegment = tab.path.split('/').pop() || ''
@@ -49,6 +51,33 @@ function tabLabel(tab: TabState): string {
         return extractFtpHost(tab.path) ?? tab.path
     }
     return lastSegment || tab.path
+}
+
+const renamingIndex = ref<number | null>(null)
+const renameText = ref('')
+const renameInputRef = ref<HTMLInputElement[]>([])
+
+function startRename(index: number) {
+    renamingIndex.value = index
+    renameText.value = tabLabel(props.tabs[index])
+    nextTick(() => {
+        const input = renameInputRef.value?.[0]
+        input?.focus()
+        input?.select()
+    })
+}
+
+function commitRename() {
+    if (renamingIndex.value === null) return
+    const name = renameText.value.trim()
+    if (name) {
+        emit('rename', renamingIndex.value, name)
+    }
+    renamingIndex.value = null
+}
+
+function cancelRename() {
+    renamingIndex.value = null
 }
 
 function updateArrows() {
@@ -93,6 +122,13 @@ function onContextMenu(e: MouseEvent, index: number) {
 function onSetMode(mode: TabMode) {
     if (ctxMenu.value !== null) {
         emit('set-mode', ctxMenu.value.tabIndex, mode)
+    }
+    ctxMenu.value = null
+}
+
+function onCtxRename() {
+    if (ctxMenu.value !== null) {
+        startRename(ctxMenu.value.tabIndex)
     }
     ctxMenu.value = null
 }
@@ -144,7 +180,18 @@ function onCtxCloseOthers() {
                     <path d="M12 2v8m-4-4 4 4 4-4M5 14h14l-1 8H6z"/>
                 </svg>
                 <span v-else-if="isFtpTab(tab)" class="tab-ftp-badge">FTP:</span>
-                <span class="tab-label">{{ tabLabel(tab) }}</span>
+                <input
+                    v-if="renamingIndex === i"
+                    ref="renameInputRef"
+                    v-model="renameText"
+                    class="tab-rename-input"
+                    @keydown.stop
+                    @keyup.enter="commitRename"
+                    @keyup.escape="cancelRename"
+                    @blur="commitRename"
+                    @click.stop
+                />
+                <span v-else class="tab-label">{{ tabLabel(tab) }}</span>
             </div>
         </div>
         <button v-if="showRightArrow" class="tab-scroll-btn right" @click="scrollRight">&#9654;</button>
@@ -156,6 +203,7 @@ function onCtxCloseOthers() {
         :current-mode="tabs[ctxMenu.tabIndex].mode"
         :can-close="tabs.length > 1"
         @set-mode="onSetMode"
+        @rename="onCtxRename"
         @close="onCtxClose"
         @close-others="onCtxCloseOthers"
         @dismiss="ctxMenu = null"
@@ -268,6 +316,17 @@ function onCtxCloseOthers() {
 .tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.tab-rename-input {
+    background: var(--bg-panel);
+    color: var(--text-primary) !important;
+    border: 1px solid var(--accent);
+    font-size: 12px;
+    padding: 0 2px;
+    width: 100px;
+    outline: none;
+    border-radius: 2px;
 }
 
 </style>
