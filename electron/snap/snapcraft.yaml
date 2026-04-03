@@ -1,0 +1,50 @@
+name: nemiga
+base: core22
+version: '0.1.0'
+summary: Nemiga — dual-panel file manager
+description: |
+  A dual-panel file manager (Total Commander style) built with Vue 3 + Electron.
+grade: stable
+confinement: strict
+
+layout:
+  /usr/share/libdrm:
+    bind: $SNAP/usr/share/libdrm
+
+apps:
+  nemiga:
+    command: usr/lib/nemiga/nemiga --no-sandbox
+    desktop: usr/share/applications/nemiga.desktop
+    extensions: [gnome]
+    plugs:
+      - home
+      - removable-media
+      - network
+      - browser-support
+      - opengl
+      - unity7
+
+parts:
+  nemiga:
+    plugin: dump
+    source: dist/linux-unpacked/
+    override-build: |
+      rm -rf $SNAPCRAFT_PART_INSTALL/*
+      cp -aT . $SNAPCRAFT_PART_INSTALL/
+      rm -f $SNAPCRAFT_PART_INSTALL/chrome-sandbox
+    organize:
+      '*': usr/lib/nemiga/
+    stage-packages:
+      - libnss3
+      - libnspr4
+      - libasound2
+      - libcups2
+      - libxss1
+      - libdrm-common
+
+  desktop-integration:
+    plugin: dump
+    source: snap/gui/
+    organize:
+      nemiga.desktop: usr/share/applications/nemiga.desktop
+      icon.svg: usr/share/icons/hicolor/scalable/apps/nemiga.svg

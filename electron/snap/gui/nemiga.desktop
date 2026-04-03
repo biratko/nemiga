@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Nemiga
+Comment=Dual-panel file manager
+Exec=nemiga %U
+Icon=${SNAP}/usr/share/icons/hicolor/scalable/apps/nemiga.svg
+Terminal=false
+Type=Application
+Categories=System;FileManager;Utility;
+StartupWMClass=nemiga
