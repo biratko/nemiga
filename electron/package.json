@@ -13,7 +13,7 @@
     "dev": "node build.js && electron dist/main.js",
     "dist": "node build.js && electron-builder --linux AppImage",
     "dist:deb": "node build.js && electron-builder --linux deb",
-    "dist:snap": "node build.js && electron-builder --linux snap"
+    "dist:snap": "node build.js && electron-builder --linux dir && sudo rm -rf parts/ prime/ stage/ && sudo --preserve-env=HOME snapcraft pack --destructive-mode --output dist/"
   },
   "dependencies": {
     "@node-rs/crc32": "^1.10.6",
@@ -44,25 +44,9 @@
       }
     ],
     "linux": {
-      "target": ["AppImage", "snap"],
+      "target": ["AppImage"],
       "category": "System",
       "artifactName": "${productName}-${version}.${ext}"
-    },
-    "snap": {
-      "confinement": "strict",
-      "grade": "stable",
-      "plugs": [
-        "home",
-        "removable-media",
-        "network",
-        "x11",
-        "desktop",
-        "desktop-legacy",
-        "wayland",
-        "unity7",
-        "browser-support",
-        "opengl"
-      ]
     },
     "mac": {
       "target": ["dmg"],

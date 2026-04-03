@@ -31,3 +31,6 @@ __pycache__/
 /.claude/
 /CLAUDE.md
 .superpowers/
+/electron/prime/
+/electron/parts/
+/electron/stage/
