@@ -6,7 +6,7 @@ import driveIconRaw from '@/assets/icons/drive.svg?raw'
 import { getUiZoom } from '@/utils/zoom'
 
 const props = defineProps<{ currentPath: string }>()
-const emit = defineEmits<{ navigate: [path: string]; 'open-ftp': [] }>()
+const emit = defineEmits<{ navigate: [path: string]; 'open-ftp': []; 'open-ssh': [] }>()
 
 const { drives, refreshDrives } = useDriveList()
 const isOpen = ref(false)
@@ -16,6 +16,7 @@ const highlightIndex = ref(0)
 const dropdownStyle = ref({ top: '0px', left: '0px' })
 
 const isFtp = computed(() => props.currentPath.startsWith('ftp://'))
+const isSsh = computed(() => props.currentPath.startsWith('ssh://'))
 
 const currentDrive = computed(() => {
     if (isFtp.value) return null
@@ -35,8 +36,9 @@ const currentDrive = computed(() => {
     return best
 })
 
-const totalItems = computed(() => drives.value.length + 1)
+const totalItems = computed(() => drives.value.length + 2)
 const ftpIndex = computed(() => drives.value.length)
+const sshIndex = computed(() => drives.value.length + 1)
 
 function toggle() {
     if (isOpen.value) {
@@ -60,6 +62,11 @@ function toggle() {
 function selectFtp() {
     isOpen.value = false
     emit('open-ftp')
+}
+
+function selectSsh() {
+    isOpen.value = false
+    emit('open-ssh')
 }
 
 function select(drive: DriveEntry) {
@@ -90,6 +97,8 @@ function onKeydown(e: KeyboardEvent) {
         case 'Enter':
             if (highlightIndex.value === ftpIndex.value) {
                 selectFtp()
+            } else if (highlightIndex.value === sshIndex.value) {
+                selectSsh()
             } else if (drives.value[highlightIndex.value]) {
                 select(drives.value[highlightIndex.value])
             }
@@ -109,9 +118,9 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="drive-selector" ref="wrapperEl">
-        <button class="drive-btn" :title="isFtp ? 'FTP' : currentDrive?.name ?? 'Drives'" @click.stop="toggle">
+        <button class="drive-btn" :title="isSsh ? 'SSH' : isFtp ? 'FTP' : currentDrive?.name ?? 'Drives'" @click.stop="toggle">
             <span class="drive-icon" v-html="driveIconRaw" />
-            <span class="drive-label">{{ isFtp ? 'FTP' : currentDrive?.name ?? 'Drive' }}</span>
+            <span class="drive-label">{{ isSsh ? 'SSH' : isFtp ? 'FTP' : currentDrive?.name ?? 'Drive' }}</span>
             <span class="drive-chevron">▾</span>
         </button>
         <div
@@ -156,6 +165,21 @@ onBeforeUnmount(() => {
                     </svg>
                 </span>
                 <span class="drive-item-name">FTP</span>
+            </div>
+            <div
+                class="drive-item"
+                :class="{ highlight: highlightIndex === sshIndex }"
+                @click="selectSsh"
+                @mouseenter="highlightIndex = sshIndex"
+            >
+                <span class="drive-item-icon ssh-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="2" y="3" width="20" height="14" rx="2"/>
+                        <path d="M7 21h10M12 17v4"/>
+                        <path d="M7 10l2 2-2 2M12 14h4"/>
+                    </svg>
+                </span>
+                <span class="drive-item-name">SSH</span>
             </div>
         </div>
     </div>
@@ -273,6 +297,11 @@ onBeforeUnmount(() => {
 }
 
 .ftp-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.ssh-icon svg {
     width: 100%;
     height: 100%;
 }
