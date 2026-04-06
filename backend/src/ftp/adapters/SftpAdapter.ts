@@ -4,10 +4,10 @@ import type {FtpAdapter} from './FtpAdapter.js'
 import path from 'node:path'
 
 // ssh2 has native bindings that may not be available in all environments (e.g. snap)
-// Use try/catch so the app starts even without it — error surfaces only when SFTP is used
+// Use dynamic import so the app starts even without it — error surfaces only when SFTP is used
 let SftpClient: any
 try {
-    SftpClient = require('ssh2-sftp-client')
+    SftpClient = (await import('ssh2-sftp-client')).default
 } catch {
     // ssh2 unavailable
 }
@@ -27,7 +27,20 @@ export class SftpAdapter implements FtpAdapter {
 
     async list(remotePath: string): Promise<FSEntry[]> {
         const items = await this.client.list(remotePath)
-        return items.map((item: any) => this.toFSEntry(item))
+        const entries: FSEntry[] = []
+        for (const item of items) {
+            const entry = this.toFSEntry(item)
+            if (entry.type === 'symlink') {
+                try {
+                    const targetStat = await this.client.stat(remotePath + '/' + item.name)
+                    entry.symlink_target_type = targetStat.isDirectory ? 'directory' : 'file'
+                } catch {
+                    // broken symlink — leave as null
+                }
+            }
+            entries.push(entry)
+        }
+        return entries
     }
 
     async mkdir(remotePath: string): Promise<void> { await this.client.mkdir(remotePath, true) }
@@ -70,6 +83,7 @@ export class SftpAdapter implements FtpAdapter {
             extension: ext,
             hidden: item.name.startsWith('.'),
             symlink_target: null,
+            symlink_target_type: null,
         }
     }
 }
