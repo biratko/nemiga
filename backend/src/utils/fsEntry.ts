@@ -1,4 +1,4 @@
-import {lstat, readlink} from 'node:fs/promises'
+import {lstat, readlink, stat} from 'node:fs/promises'
 import path from 'node:path'
 import type {Dirent} from 'node:fs'
 import type {FSEntry} from '../protocol/fs-types.js'
@@ -12,11 +12,18 @@ export async function toEntry(dir: string, de: Dirent): Promise<FSEntry> {
     else if (de.isSymbolicLink()) type = 'symlink'
 
     let symlinkTarget: string | null = null
+    let symlinkTargetType: FSEntry['symlink_target_type'] = null
     if (de.isSymbolicLink()) {
         try {
             symlinkTarget = await readlink(fullPath)
         } catch {
             // ignore
+        }
+        try {
+            const targetStat = await stat(fullPath)
+            symlinkTargetType = targetStat.isDirectory() ? 'directory' : 'file'
+        } catch {
+            // broken symlink — leave as null
         }
     }
 
@@ -39,6 +46,7 @@ export async function toEntry(dir: string, de: Dirent): Promise<FSEntry> {
         extension,
         hidden: de.name.startsWith('.'),
         symlink_target: symlinkTarget,
+        symlink_target_type: symlinkTargetType,
     }
 }
 
