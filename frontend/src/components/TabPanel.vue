@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {ref, computed} from 'vue'
 import {ftpDisconnect} from '@/api/ftp'
+import {sshDisconnect} from '@/api/ssh'
 import {commitFtpArchive} from '@/api/fs'
 import type {TabState, TabMode, PanelTabsState} from '@/types/tabs'
 import type {PanelSort, ColumnWidths, SearchColumnWidths} from '@/types/workspace'
@@ -28,6 +29,7 @@ const emit = defineEmits<{
     extract: [archivePath: string, shiftKey: boolean]
     pack: [sourcePaths: string[], shiftKey: boolean]
     'open-ftp': []
+    'open-ssh': []
     'open-file': [path: string]
 }>()
 
@@ -76,6 +78,15 @@ function extractFtpSessionId(path: string): string | null {
     return atIndex === -1 ? authority : authority.slice(0, atIndex)
 }
 
+function extractSshSessionId(path: string): string | null {
+    if (!path.startsWith('ssh://')) return null
+    const rest = path.slice('ssh://'.length)
+    const slashIndex = rest.indexOf('/')
+    const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    return atIndex === -1 ? authority : authority.slice(0, atIndex)
+}
+
 function getFtpArchiveFilePart(path: string): string | null {
     if (!path.startsWith('ftp://')) return null
     const sepIdx = path.indexOf('::')
@@ -94,6 +105,10 @@ async function closeTab(index: number) {
     const sessionId = extractFtpSessionId(closingTab.path)
     if (sessionId) {
         ftpDisconnect(sessionId).catch(() => {})
+    }
+    const sshSessionId = extractSshSessionId(closingTab.path)
+    if (sshSessionId) {
+        sshDisconnect(sshSessionId).catch(() => {})
     }
     tabs.value.splice(index, 1)
     if (activeTabIndex.value >= tabs.value.length) {
@@ -115,6 +130,8 @@ async function closeOtherTabs(keepIndex: number) {
         }
         const sid = extractFtpSessionId(tab.path)
         if (sid) ftpDisconnect(sid).catch(() => {})
+        const sshSid = extractSshSessionId(tab.path)
+        if (sshSid) sshDisconnect(sshSid).catch(() => {})
     }
     tabs.value = [kept]
     activeTabIndex.value = 0
@@ -271,6 +288,7 @@ defineExpose({
             @extract="onExtract"
             @pack="onPack"
             @open-ftp="emit('open-ftp')"
+            @open-ssh="emit('open-ssh')"
             @open-file="(path: string) => emit('open-file', path)"
         >
             <template #before-header>

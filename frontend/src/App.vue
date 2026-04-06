@@ -2,6 +2,7 @@
 import {ref, onMounted, onUnmounted, type ComponentPublicInstance} from 'vue'
 import TabPanel from './components/TabPanel.vue'
 import FtpConnectDialog from './components/FtpConnectDialog.vue'
+import SshConnectDialog from './components/SshConnectDialog.vue'
 import CopyDialog from './components/CopyDialog.vue'
 import MoveDialog from './components/MoveDialog.vue'
 import DeleteDialog from './components/DeleteDialog.vue'
@@ -50,6 +51,23 @@ const {
 } = usePanelResize()
 
 const {on: onNotify} = useNotifyWs()
+onNotify('ssh-session-renewed', (data: any) => {
+    const {oldSessionId, newSessionId} = data ?? {}
+    if (!oldSessionId || !newSessionId || !panelState.value) return
+    const prefix = `ssh://${oldSessionId}`
+    const newPrefix = `ssh://${newSessionId}`
+    for (const side of ['left', 'right'] as const) {
+        panelState.value![side].tabs = panelState.value![side].tabs.map(tab => ({
+            ...tab,
+            path: tab.path.startsWith(prefix) ? newPrefix + tab.path.slice(prefix.length) : tab.path,
+        }))
+    }
+    const lPath = leftPanel.value?.currentPath
+    if (lPath?.startsWith(prefix)) leftPanel.value?.loadDirectory(newPrefix + lPath.slice(prefix.length))
+    const rPath = rightPanel.value?.currentPath
+    if (rPath?.startsWith(prefix)) rightPanel.value?.loadDirectory(newPrefix + rPath.slice(prefix.length))
+})
+
 onNotify('ftp-session-renewed', (data: any) => {
     const {oldSessionId, newSessionId} = data ?? {}
     if (!oldSessionId || !newSessionId || !panelState.value) return
@@ -71,6 +89,7 @@ const {matchAction, load: loadActionMap} = useActionMap()
 
 const showSettings = ref(false)
 const showFtpConnect = ref<'left' | 'right' | null>(null)
+const showSshConnect = ref<'left' | 'right' | null>(null)
 const currentSettings = ref<SettingsState>({})
 
 
@@ -226,6 +245,14 @@ function onDeleteClose(deleted: boolean) {
     if (deleted && basePath) {
         const source = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
         source?.loadDirectory(basePath)
+    }
+}
+
+function onSshConnected(sshPath: string) {
+    const panel = showSshConnect.value === 'left' ? leftPanel.value : rightPanel.value
+    showSshConnect.value = null
+    if (panel) {
+        panel.loadDirectory(sshPath)
     }
 }
 
@@ -512,6 +539,7 @@ onUnmounted(() => {
                     @extract="startExtract"
                     @pack="startPack"
                     @open-ftp="showFtpConnect = 'left'"
+                    @open-ssh="showSshConnect = 'left'"
                     @open-file="onOpenFile"
                 />
                 <div
@@ -554,6 +582,7 @@ onUnmounted(() => {
                     @extract="startExtract"
                     @pack="startPack"
                     @open-ftp="showFtpConnect = 'right'"
+                    @open-ssh="showSshConnect = 'right'"
                     @open-file="onOpenFile"
                 />
             </template>
@@ -615,6 +644,11 @@ onUnmounted(() => {
             v-if="showFtpConnect !== null"
             @close="showFtpConnect = null"
             @connected="onFtpConnected"
+        />
+        <SshConnectDialog
+            v-if="showSshConnect !== null"
+            @close="showSshConnect = null"
+            @connected="onSshConnected"
         />
         <SettingsDialog
             v-if="showSettings"
