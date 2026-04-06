@@ -51,8 +51,6 @@ export class SshAdapter implements FtpAdapter {
     }
 
     async list(remotePath: string): Promise<FSEntry[]> {
-        // Use stat format: type perms size mtime name
-        // %F=type, %A=perms, %s=size, %Y=mtime epoch, %n=name
         const escaped = this.shellEscape(remotePath)
         const output = await this.exec(
             `LC_ALL=C stat --format='%F\t%A\t%s\t%Y\t%n' ${escaped}/* ${escaped}/.* 2>/dev/null || true`
@@ -60,6 +58,8 @@ export class SshAdapter implements FtpAdapter {
         if (!output.trim()) return []
 
         const entries: FSEntry[] = []
+        const symlinkPaths: string[] = []
+
         for (const line of output.split('\n')) {
             if (!line.trim()) continue
             const parts = line.split('\t')
@@ -73,6 +73,8 @@ export class SshAdapter implements FtpAdapter {
             const isSymlink = typeStr === 'symbolic link'
             const ext = !isDir ? (path.extname(name).slice(1) || null) : null
 
+            if (isSymlink) symlinkPaths.push(fullPath)
+
             entries.push({
                 name,
                 type: isDir ? 'directory' : isSymlink ? 'symlink' : 'file',
@@ -82,8 +84,32 @@ export class SshAdapter implements FtpAdapter {
                 extension: ext,
                 hidden: name.startsWith('.'),
                 symlink_target: null,
+                symlink_target_type: null,
             })
         }
+
+        // Resolve symlink target types in one round-trip
+        if (symlinkPaths.length > 0) {
+            const escapedPaths = symlinkPaths.map(p => this.shellEscape(p)).join(' ')
+            const resolveOutput = await this.exec(
+                `LC_ALL=C stat -L --format='%F\t%n' ${escapedPaths} 2>/dev/null || true`
+            )
+            const targetTypes = new Map<string, 'file' | 'directory'>()
+            for (const line of resolveOutput.split('\n')) {
+                if (!line.trim()) continue
+                const parts = line.split('\t')
+                if (parts.length < 2) continue
+                const [typeStr, fullPath] = parts
+                const name = path.basename(fullPath)
+                targetTypes.set(name, typeStr === 'directory' ? 'directory' : 'file')
+            }
+            for (const entry of entries) {
+                if (entry.type === 'symlink' && targetTypes.has(entry.name)) {
+                    entry.symlink_target_type = targetTypes.get(entry.name)!
+                }
+            }
+        }
+
         return entries
     }
 
