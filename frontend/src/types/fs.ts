@@ -7,6 +7,7 @@ export interface FSEntry {
   extension: string | null
   hidden: boolean
   symlink_target: string | null
+  symlink_target_type: 'file' | 'directory' | null
   isArchive?: boolean
   searchPath?: string
 }
