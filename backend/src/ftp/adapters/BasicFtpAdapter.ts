@@ -133,6 +133,7 @@ export class BasicFtpAdapter implements FtpAdapter {
             extension: ext,
             hidden: info.name.startsWith('.'),
             symlink_target: null,
+            symlink_target_type: null,
         }
     }
 }
