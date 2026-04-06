@@ -19,13 +19,7 @@
            L148 244 C163 225, 138 210, 151 180 C164 150, 128 130, 145 100 C158 70, 118 50, 138 20 Z"
         fill="url(#river)" opacity="0.9"/>
 
-  <!-- River highlight -->
-  <path d="M128 20
-           C106 50, 148 70, 132 100
-           C116 130, 154 150, 136 180
-           C120 210, 152 225, 128 244"
-        stroke="#b3e5fc" stroke-width="3" fill="none"
-        stroke-linecap="round" stroke-linejoin="round" opacity="0.35"/>
+
 
   <!-- Left bushes — two columns along left bank -->
   <!-- Row 1: y=35 (red) -->
