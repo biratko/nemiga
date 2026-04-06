@@ -85,7 +85,7 @@ export class FtpProvider implements FileSystemProvider {
                 }
             }
 
-            const resolvedPath = remotePath === '/' || remotePath === ''
+            const resolvedPath = remotePath === ''
                 ? await this.run(() => this.adapter.pwd())
                 : remotePath
             const fullPath = `${this.pathPrefix}${resolvedPath.startsWith('/') ? '' : '/'}${resolvedPath}`
