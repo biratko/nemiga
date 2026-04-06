@@ -26,6 +26,7 @@ export function addImplicitDirs(
                 extension: null,
                 hidden: parts[i - 1].startsWith('.'),
                 symlink_target: null,
+                symlink_target_type: null,
             })
         }
     }

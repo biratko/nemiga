@@ -141,6 +141,7 @@ export class TarAdapter implements CreatableAdapter {
                         extension: null,
                         hidden: isHiddenEntry(name),
                         symlink_target: null,
+                        symlink_target_type: null,
                     })
                 }
             } else {
@@ -154,6 +155,7 @@ export class TarAdapter implements CreatableAdapter {
                     extension: entryExtension(baseName),
                     hidden: baseName.startsWith('.'),
                     symlink_target: header.type === 'symlink' ? (header.linkname ?? null) : null,
+                    symlink_target_type: null,
                 })
             }
 

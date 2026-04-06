@@ -44,6 +44,7 @@ export class ZipAdapter implements CreatableAdapter {
                         extension: null,
                         hidden: name.startsWith('.'),
                         symlink_target: null,
+                        symlink_target_type: null,
                     })
                 } else {
                     const baseName = entryBaseName(fileName)
@@ -56,6 +57,7 @@ export class ZipAdapter implements CreatableAdapter {
                         extension: entryExtension(baseName),
                         hidden: baseName.startsWith('.'),
                         symlink_target: null,
+                        symlink_target_type: null,
                     })
                 }
             }

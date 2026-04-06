@@ -100,6 +100,7 @@ export class SevenZipAdapter implements CreatableAdapter {
                         extension: null,
                         hidden: isHiddenEntry(cleanName),
                         symlink_target: null,
+                        symlink_target_type: null,
                     })
                 }
             } else {
@@ -113,6 +114,7 @@ export class SevenZipAdapter implements CreatableAdapter {
                     extension: entryExtension(baseName),
                     hidden: baseName.startsWith('.'),
                     symlink_target: null,
+                    symlink_target_type: null,
                 })
             }
 
