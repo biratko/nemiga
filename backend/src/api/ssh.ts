@@ -33,7 +33,21 @@ export function sshRouter(sshSessionManager: SshSessionManager): Router {
     })
 
     router.post('/ssh/open-terminal', (req, res) => {
-        const {host, port, username, password} = req.body
+        let {host, port, username, password, sessionId} = req.body
+
+        // If sessionId is provided, resolve credentials from session
+        if (sessionId && (!host || !username)) {
+            const creds = sshSessionManager.getCredentials(sessionId)
+            if (!creds) {
+                res.json({ok: false, error: {code: ErrorCode.NOT_FOUND, message: 'SSH session not found'}})
+                return
+            }
+            host = host || creds.host
+            port = port || creds.port
+            username = username || creds.username
+            password = password ?? creds.password
+        }
+
         if (!host || !port || !username) {
             res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Missing required fields'}})
             return

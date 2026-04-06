@@ -395,9 +395,27 @@ function copyPath() {
 }
 
 const isFtpPath = computed(() => currentPath.value.startsWith('ftp://'))
+const isSshPath = computed(() => currentPath.value.startsWith('ssh://'))
 
 async function openTerminal() {
   try {
+    if (isSshPath.value) {
+      const rest = currentPath.value.slice('ssh://'.length)
+      const slashIndex = rest.indexOf('/')
+      const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+      const atIndex = authority.indexOf('@')
+      const sessionId = atIndex === -1 ? authority : authority.slice(0, atIndex)
+      const res = await fetch('/api/ssh/open-terminal', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({sessionId}),
+      })
+      const data = await res.json()
+      if (!data.ok) {
+        console.warn('Failed to open terminal:', data.error?.message)
+      }
+      return
+    }
     const res = await fetch('/api/fs/terminal', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
@@ -418,20 +436,21 @@ const displayPath = computed(() => props.searchResults ? searchDisplayPath.value
 
 const pathSegments = computed(() => {
   const full = displayPath.value
-  if (full.startsWith('ftp://')) {
-    const rest = full.slice('ftp://'.length)
+  if (full.startsWith('ftp://') || full.startsWith('ssh://')) {
+    const scheme = full.startsWith('ftp://') ? 'ftp://' : 'ssh://'
+    const rest = full.slice(scheme.length)
     const slashIndex = rest.indexOf('/')
     const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
     const atIndex = authority.indexOf('@')
     const host = atIndex === -1 ? authority : authority.slice(atIndex + 1)
-    const ftpPrefix = 'ftp://' + authority
+    const prefix = scheme + authority
     const remotePath = slashIndex === -1 ? '' : rest.slice(slashIndex)
     const remoteParts = remotePath.split('/').filter(Boolean)
-    const segments = [{name: host, path: ftpPrefix + '/'}]
+    const segments = [{name: host, path: prefix + '/'}]
     for (let i = 0; i < remoteParts.length; i++) {
       segments.push({
         name: remoteParts[i],
-        path: ftpPrefix + '/' + remoteParts.slice(0, i + 1).join('/'),
+        path: prefix + '/' + remoteParts.slice(0, i + 1).join('/'),
       })
     }
     return segments
