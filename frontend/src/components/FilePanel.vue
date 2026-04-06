@@ -270,7 +270,10 @@ function setSort(key: 'name' | 'size' | 'modified') {
 
 async function navigate(entry: FSEntry, event?: MouseEvent | KeyboardEvent) {
   const dir = entryDir(entry)
-  if (entry.type === 'directory') {
+  const isNavigableDir = entry.type === 'directory' ||
+      (entry.type === 'symlink' && entry.symlink_target_type === 'directory')
+
+  if (isNavigableDir) {
     const target = joinPath(dir, entry.name)
     if (event?.ctrlKey || event?.metaKey) {
       emit('open-in-new-tab', target)
