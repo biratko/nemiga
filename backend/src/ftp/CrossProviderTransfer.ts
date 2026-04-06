@@ -10,7 +10,7 @@ import path from 'node:path'
  * `path.posix.join` collapses `://` → `:/` so it must not be used on FTP URLs.
  */
 function joinPath(base: string, segment: string): string {
-    if (base.startsWith('ftp://') || base.startsWith('ftps://') || base.startsWith('sftp://')) {
+    if (base.startsWith('ftp://') || base.startsWith('ftps://') || base.startsWith('sftp://') || base.startsWith('ssh://')) {
         const sep = base.endsWith('/') ? '' : '/'
         return `${base}${sep}${segment}`
     }
@@ -90,7 +90,7 @@ export class CrossProviderTransfer implements FileSystemProvider {
             const isSelfListing = realEntries.length === 1 &&
                 realEntries[0].type === 'file' &&
                 realEntries[0].name === srcBasename
-            if (!isSelfListing) {
+            if (!isSelfListing && realEntries.length > 0) {
                 await this.destProvider.mkdir(destPath)
                 let bytes = 0
                 for (const entry of realEntries) {

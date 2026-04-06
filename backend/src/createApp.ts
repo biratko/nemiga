@@ -23,6 +23,10 @@ import {ftpRouter} from './api/ftp.js'
 import {ftpArchiveRouter} from './api/ftp-archive.js'
 import {FtpConnectionsService} from './ftp/FtpConnectionsService.js'
 import {ftpConnectionsRouter} from './api/ftp-connections.js'
+import {SshSessionManager} from './ssh/SshSessionManager.js'
+import {SshConnectionsService} from './ssh/SshConnectionsService.js'
+import {sshRouter} from './api/ssh.js'
+import {sshConnectionsRouter} from './api/ssh-connections.js'
 
 export interface AppInstance {
     server: http.Server
@@ -50,11 +54,14 @@ export function createApp(options: AppOptions = {}): AppInstance {
     ftpSessionManager.setArchiveCache(ftpArchiveCache)
     const notifyServer = new NotifyServer()
     ftpSessionManager.setNotifyServer(notifyServer)
-    const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager, ftpArchiveProvider)
+    const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager, ftpArchiveProvider, sshSessionManager)
     const storage = new JsonFileStorage()
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
     const ftpConnectionsService = new FtpConnectionsService(storage)
+    const sshSessionManager = new SshSessionManager()
+    sshSessionManager.setNotifyServer(notifyServer)
+    const sshConnectionsService = new SshConnectionsService(storage)
     const watchServer = new WatchServer(router)
     const wsServer = new WsServer(router, settingsService)
 
@@ -65,6 +72,8 @@ export function createApp(options: AppOptions = {}): AppInstance {
         ftpRouter(ftpSessionManager),
         ftpArchiveRouter(ftpArchiveCache, ftpSessionManager),
         ftpConnectionsRouter(ftpConnectionsService),
+        sshRouter(sshSessionManager),
+        sshConnectionsRouter(sshConnectionsService),
     ]
     const app = createExpressApp(apiRouters, apiErrorHandler, {
         frontendDist: options.frontendDist,
@@ -82,6 +91,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
         await ftpArchiveCache.cleanup().catch(() => {})
         await archiveProvider.cleanup().catch(() => {})
         await ftpSessionManager.cleanup().catch(() => {})
+        await sshSessionManager.cleanup().catch(() => {})
         await new Promise<void>((resolve, reject) => {
             server.close((err) => err ? reject(err) : resolve())
         })

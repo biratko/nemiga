@@ -6,6 +6,7 @@ import type {FtpSessionManager} from '../ftp/FtpSessionManager.js'
 import type {FtpArchiveProvider} from '../ftp/FtpArchiveProvider.js'
 import {CrossProviderTransfer} from '../ftp/CrossProviderTransfer.js'
 import {ErrorCode} from '../protocol/errors.js'
+import type {SshSessionManager} from '../ssh/SshSessionManager.js'
 
 export function isFtpPath(p: string): boolean {
     return p.startsWith('ftp://')
@@ -23,6 +24,22 @@ export function extractFtpSessionId(p: string): string {
     return atIndex === -1 ? authority : authority.slice(0, atIndex)
 }
 
+export function isSshPath(p: string): boolean {
+    return p.startsWith('ssh://')
+}
+
+export function isSshArchivePath(p: string): boolean {
+    return p.startsWith('ssh://') && p.includes('::')
+}
+
+export function extractSshSessionId(p: string): string {
+    const withoutPrefix = p.slice('ssh://'.length)
+    const slashIndex = withoutPrefix.indexOf('/')
+    const authority = slashIndex === -1 ? withoutPrefix : withoutPrefix.slice(0, slashIndex)
+    const atIndex = authority.indexOf('@')
+    return atIndex === -1 ? authority : authority.slice(0, atIndex)
+}
+
 export class ProviderRouter {
     constructor(
         private local: FileSystemProvider,
@@ -30,9 +47,13 @@ export class ProviderRouter {
         private pathGuard: PathGuard,
         private ftpSessions?: FtpSessionManager,
         private ftpArchive?: FtpArchiveProvider,
+        private sshSessions?: SshSessionManager,
     ) {}
 
     resolve(path: string): FileSystemProvider {
+        if (isSshPath(path)) {
+            return this.resolveSsh(path)
+        }
         if (isFtpArchivePath(path)) {
             return this.resolveFtpArchive()
         }
@@ -50,8 +71,10 @@ export class ProviderRouter {
 
         const srcIsFtp = isFtpPath(sources[0])
         const destIsFtp = isFtpPath(destination)
+        const srcIsSsh = isSshPath(sources[0])
+        const destIsSsh = isSshPath(destination)
 
-        if (!srcIsFtp && !destIsFtp) {
+        if (!srcIsFtp && !destIsFtp && !srcIsSsh && !destIsSsh) {
             this.guardPaths([...sources, destination])
             if (isArchivePath(destination) || isArchivePath(sources[0])) {
                 return this.archive
@@ -77,6 +100,20 @@ export class ProviderRouter {
         return this.archive.findAdapter(archivePath)
     }
 
+    private resolveSsh(p: string): FileSystemProvider {
+        if (!this.sshSessions) {
+            throw new Error('SSH not configured')
+        }
+        const sessionId = extractSshSessionId(p)
+        const provider = this.sshSessions.get(sessionId)
+        if (!provider) {
+            const err = new Error(`SSH session not found: ${sessionId}`)
+            ;(err as any).code = ErrorCode.SESSION_NOT_FOUND
+            throw err
+        }
+        return provider
+    }
+
     private resolveFtpArchive(): FileSystemProvider {
         if (!this.ftpArchive) throw new Error('FTP archive not configured')
         return this.ftpArchive
@@ -97,7 +134,7 @@ export class ProviderRouter {
     }
 
     private guardPath(p: string): void {
-        if (isFtpPath(p)) return
+        if (isFtpPath(p) || isSshPath(p)) return
         const real = isArchivePath(p) ? archiveRealPath(p) : p
         this.pathGuard.assert(real)
     }
