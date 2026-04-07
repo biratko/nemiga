@@ -84,8 +84,6 @@ async function save() {
         fileTypes: fileTypes.value,
         toastDurationMs: toastDurationMs.value,
     }
-    localStorage.setItem('nemiga-theme', theme.value)
-    localStorage.setItem('nemiga-zoom', String(zoom.value))
     document.documentElement.style.zoom = String(zoom.value)
     await saveSettings(state)
     emit('close', state)
