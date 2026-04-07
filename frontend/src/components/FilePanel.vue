@@ -318,7 +318,10 @@ async function goUp() {
     await loadDirectory(parent)
     if (dirName) {
       const idx = sortedEntries.value.findIndex(e => e.name === dirName)
-      if (idx >= 0) cursorIndex.value = idx + 1
+      if (idx >= 0) {
+        cursorIndex.value = idx + 1
+        scrollToIndex(cursorIndex.value)
+      }
     }
     return
   }
@@ -339,7 +342,10 @@ async function goUp() {
     await loadDirectory(target)
     if (dirName) {
       const idx = sortedEntries.value.findIndex(e => e.name === dirName)
-      if (idx >= 0) cursorIndex.value = idx + 1
+      if (idx >= 0) {
+        cursorIndex.value = idx + 1
+        scrollToIndex(cursorIndex.value)
+      }
     }
   } else {
     // At archive root — go to parent (filesystem dir or outer archive)
@@ -353,7 +359,10 @@ async function goUp() {
     await loadDirectory(parent)
     if (archiveName) {
       const idx = sortedEntries.value.findIndex(e => e.name === archiveName)
-      if (idx >= 0) cursorIndex.value = idx + 1
+      if (idx >= 0) {
+        cursorIndex.value = idx + 1
+        scrollToIndex(cursorIndex.value)
+      }
     }
   }
 }
