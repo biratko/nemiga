@@ -566,7 +566,7 @@ onBeforeUnmount(() => {
     <slot name="before-header" />
     <div class="panel-header">
       <DriveSelector :currentPath="currentPath" @navigate="loadDirectory" @open-ftp="emit('open-ftp')" @open-ssh="emit('open-ssh')" />
-      <span class="path"><span v-if="!isWindowsPath" class="path-sep">/</span><template v-for="(seg, i) in pathSegments" :key="seg.path"><span class="path-segment" @click.stop="loadDirectory(seg.path)">{{ seg.name }}</span><span v-if="i < pathSegments.length - 1" class="path-sep">/</span></template></span>
+      <span class="path"><span v-if="!isWindowsPath" class="path-sep">/</span><template v-for="(seg, i) in pathSegments" :key="seg.path"><span class="path-segment" @click.stop="loadDirectory(seg.path)" @mousedown.middle.stop.prevent="emit('open-in-new-tab', seg.path)">{{ seg.name }}</span><span v-if="i < pathSegments.length - 1" class="path-sep">/</span></template></span>
       <button class="copy-path-btn" title="Copy path" @click.stop="copyPath">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
