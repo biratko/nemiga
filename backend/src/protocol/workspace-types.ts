@@ -41,4 +41,5 @@ export interface WorkspaceState {
         right?: ColumnWidths
         search?: SearchColumnWidths
     }
+    splitPercent?: number
 }

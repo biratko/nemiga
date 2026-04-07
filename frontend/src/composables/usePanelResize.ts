@@ -1,7 +1,6 @@
 import {ref, nextTick, onMounted, onUnmounted} from 'vue'
 import {getUiZoom} from '@/utils/zoom'
 
-const STORAGE_KEY = 'panel-split-percent'
 const MIN_PERCENT = 15
 const MAX_PERCENT = 85
 const DEFAULT_PERCENT = 50
@@ -16,19 +15,20 @@ export function usePanelResize() {
 
     let containerEl: HTMLElement | null = null
     let inputRef: HTMLInputElement | null = null
+    let onChangeCallback: (() => void) | null = null
 
-    function load() {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-            const n = parseFloat(saved)
-            if (!isNaN(n) && n >= MIN_PERCENT && n <= MAX_PERCENT) {
-                splitPercent.value = n
-            }
+    function initSplitPercent(value?: number) {
+        if (value != null && !isNaN(value) && value >= MIN_PERCENT && value <= MAX_PERCENT) {
+            splitPercent.value = value
         }
     }
 
-    function save() {
-        localStorage.setItem(STORAGE_KEY, String(Math.round(splitPercent.value * 10) / 10))
+    function onSplitChange(cb: () => void) {
+        onChangeCallback = cb
+    }
+
+    function notifyChange() {
+        onChangeCallback?.()
     }
 
     function clamp(v: number): number {
@@ -70,7 +70,7 @@ export function usePanelResize() {
         isDragging.value = false
         document.body.style.cursor = ''
         document.body.style.userSelect = ''
-        save()
+        notifyChange()
     }
 
     function onDblClick() {
@@ -88,7 +88,7 @@ export function usePanelResize() {
         const n = parseFloat(inputValue.value)
         if (!isNaN(n)) {
             splitPercent.value = clamp(n)
-            save()
+            notifyChange()
         }
         showInput.value = false
     }
@@ -106,7 +106,6 @@ export function usePanelResize() {
     }
 
     onMounted(() => {
-        load()
         document.addEventListener('mousemove', onMouseMove)
         document.addEventListener('mouseup', onMouseUp)
     })
@@ -129,5 +128,7 @@ export function usePanelResize() {
         cancelInput,
         setContainer,
         setInputRef,
+        initSplitPercent,
+        onSplitChange,
     }
 }

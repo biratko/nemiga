@@ -48,6 +48,8 @@ const {
     cancelInput: cancelSplitInput,
     setContainer: setSplitContainer,
     setInputRef: setSplitInputRef,
+    initSplitPercent,
+    onSplitChange,
 } = usePanelResize()
 
 const {on: onNotify} = useNotifyWs()
@@ -327,6 +329,7 @@ async function loadWorkspace() {
                 if (ws.columnWidths.right) columnWidths.value.right = {...DEFAULT_WIDTHS, ...ws.columnWidths.right}
                 if (ws.columnWidths.search) columnWidths.value.search = {...DEFAULT_SEARCH_WIDTHS, ...ws.columnWidths.search}
             }
+            initSplitPercent(ws.splitPercent)
         }
     } catch {
         // ignore, panels will use default path
@@ -346,7 +349,11 @@ async function saveWorkspace() {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                workspace: {panels: panelState.value, columnWidths: columnWidths.value},
+                workspace: {
+                    panels: panelState.value,
+                    columnWidths: columnWidths.value,
+                    splitPercent: splitPercent.value,
+                },
             }),
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -474,6 +481,8 @@ function handleKeydown(e: KeyboardEvent) {
             break
     }
 }
+
+onSplitChange(() => saveWorkspace())
 
 onMounted(async () => {
     await loadWorkspace()

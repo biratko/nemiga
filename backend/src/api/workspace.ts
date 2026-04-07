@@ -65,6 +65,10 @@ function sanitizeWorkspace(raw: unknown): WorkspaceState | null {
         if (Object.keys(columnWidths).length > 0) result.columnWidths = columnWidths
     }
 
+    if (typeof w.splitPercent === 'number' && w.splitPercent >= 15 && w.splitPercent <= 85) {
+        result.splitPercent = w.splitPercent
+    }
+
     return result
 }
 

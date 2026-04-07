@@ -119,6 +119,9 @@ export class WorkspaceService {
         if (parsed.columnWidths && typeof parsed.columnWidths === 'object') {
             result.columnWidths = parsed.columnWidths as WorkspaceState['columnWidths']
         }
+        if (typeof parsed.splitPercent === 'number') {
+            result.splitPercent = parsed.splitPercent
+        }
         return result
     }
 
