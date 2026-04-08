@@ -257,6 +257,13 @@ defineExpose({
     },
     createTab,
     closeTab() { closeTab(activeTabIndex.value) },
+    setActiveTabName(name: string) {
+        const tab = activeTab.value
+        if (tab) {
+            tab.customName = name
+            emitTabsChange()
+        }
+    },
 })
 </script>
 

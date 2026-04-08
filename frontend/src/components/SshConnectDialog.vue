@@ -14,7 +14,7 @@ import ModalDialog from './ModalDialog.vue'
 
 const emit = defineEmits<{
     close: []
-    connected: [path: string]
+    connected: [path: string, connectionName?: string]
 }>()
 
 // Saved connections state
@@ -181,7 +181,7 @@ async function doConnect() {
         if (result.ok && result.sessionId) {
             const rp = remotePath.value.trim() || '/'
             const sshPath = `ssh://${result.sessionId}@${host.value.trim()}${rp.startsWith('/') ? '' : '/'}${rp}`
-            emit('connected', sshPath)
+            emit('connected', sshPath, connectionName.value.trim() || undefined)
         } else {
             errorMsg.value = result.error?.message ?? 'Connection failed'
         }

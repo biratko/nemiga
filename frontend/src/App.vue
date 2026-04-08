@@ -32,6 +32,7 @@ interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
     closeTab(): void
     setSearchResults(results: FSEntry[], directory: string): void
+    setActiveTabName(name: string): void
 }
 
 const leftPanel = ref<TabPanelAPI>()
@@ -250,11 +251,12 @@ function onDeleteClose(deleted: boolean) {
     }
 }
 
-function onSshConnected(sshPath: string) {
+function onSshConnected(sshPath: string, connectionName?: string) {
     const panel = showSshConnect.value === 'left' ? leftPanel.value : rightPanel.value
     showSshConnect.value = null
     if (panel) {
         panel.loadDirectory(sshPath)
+        if (connectionName) panel.setActiveTabName(connectionName)
     }
 }
 

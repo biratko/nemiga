@@ -29,13 +29,14 @@ const scrollContainer = ref<HTMLElement | null>(null)
 const showLeftArrow = ref(false)
 const showRightArrow = ref(false)
 
-function isFtpTab(tab: TabState): boolean {
-    return tab.path.startsWith('ftp://')
+function isRemoteTab(tab: TabState): boolean {
+    return tab.path.startsWith('ftp://') || tab.path.startsWith('ssh://')
 }
 
-function extractFtpHost(path: string): string | null {
-    if (!path.startsWith('ftp://')) return null
-    const rest = path.slice('ftp://'.length)
+function extractRemoteHost(path: string): string | null {
+    const match = path.match(/^(?:ftp|ssh):\/\//)
+    if (!match) return null
+    const rest = path.slice(match[0].length)
     const slashIndex = rest.indexOf('/')
     const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
     const atIndex = authority.indexOf('@')
@@ -47,8 +48,8 @@ function tabLabel(tab: TabState): string {
     if (tab.searchResults) return 'Search'
     if (tab.path === '/') return '/'
     const lastSegment = tab.path.split('/').pop() || ''
-    if (isFtpTab(tab) && !lastSegment) {
-        return extractFtpHost(tab.path) ?? tab.path
+    if (isRemoteTab(tab) && !lastSegment) {
+        return extractRemoteHost(tab.path) ?? tab.path
     }
     return lastSegment || tab.path
 }
@@ -179,7 +180,8 @@ function onCtxCloseOthers() {
                 <svg v-else-if="tab.mode === 'fixed'" class="tab-mode-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M12 2v8m-4-4 4 4 4-4M5 14h14l-1 8H6z"/>
                 </svg>
-                <span v-else-if="isFtpTab(tab)" class="tab-ftp-badge">FTP:</span>
+                <span v-else-if="tab.path.startsWith('ftp://')" class="tab-ftp-badge">FTP:</span>
+                <span v-else-if="tab.path.startsWith('ssh://')" class="tab-ftp-badge">SSH:</span>
                 <input
                     v-if="renamingIndex === i"
                     ref="renameInputRef"
