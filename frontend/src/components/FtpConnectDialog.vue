@@ -22,6 +22,7 @@ const savedConnections = ref<SavedFtpConnectionDto[]>([])
 const selectedId = ref<string | null>(null)
 const listLoading = ref(false)
 const listError = ref('')
+const pendingDeleteId = ref<string | null>(null)
 
 // Form fields
 const protocol = ref<'ftp' | 'ftps' | 'sftp'>('ftp')
@@ -135,7 +136,11 @@ async function doSave() {
 }
 
 async function doDelete(id: string) {
-    if (!confirm('Delete this saved connection?')) return
+    if (pendingDeleteId.value !== id) {
+        pendingDeleteId.value = id
+        return
+    }
+    pendingDeleteId.value = null
     try {
         await deleteConnection(id)
         savedConnections.value = savedConnections.value.filter(c => c.id !== id)
@@ -148,6 +153,10 @@ async function doDelete(id: string) {
 function onKeydown(e: KeyboardEvent) {
     e.stopPropagation()
     if (e.key === 'Escape') {
+        if (pendingDeleteId.value) {
+            pendingDeleteId.value = null
+            return
+        }
         emit('close')
     } else if (e.key === 'Enter' && !connecting.value && !saving.value) {
         doConnect()
@@ -227,7 +236,12 @@ async function doConnect() {
                         @dblclick="selectConnection(conn); doConnect()"
                     >
                         <span class="saved-item-name" :title="conn.name">{{ conn.name }}</span>
-                        <button class="btn-delete" @click.stop="doDelete(conn.id)" title="Delete">&times;</button>
+                        <span v-if="pendingDeleteId === conn.id" class="delete-confirm" @click.stop>
+                            <span class="delete-confirm-label">Delete?</span>
+                            <button class="btn-confirm-yes" @click.stop="doDelete(conn.id)" title="Confirm">&#10003;</button>
+                            <button class="btn-confirm-no" @click.stop="pendingDeleteId = null" title="Cancel">&#10005;</button>
+                        </span>
+                        <button v-else class="btn-delete" @click.stop="doDelete(conn.id)" title="Delete">&times;</button>
                     </div>
                 </div>
             </div>
@@ -405,6 +419,57 @@ async function doConnect() {
 
 .saved-item.active .btn-delete:hover {
     opacity: 1;
+}
+
+.delete-confirm {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 11px;
+}
+
+.delete-confirm-label {
+    color: var(--text-secondary);
+}
+
+.saved-item.active .delete-confirm-label {
+    color: #fff;
+    opacity: 0.7;
+}
+
+.btn-confirm-yes, .btn-confirm-no {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0 2px;
+    font-size: 13px;
+    line-height: 1;
+}
+
+.btn-confirm-yes {
+    color: var(--accent);
+}
+
+.btn-confirm-yes:hover {
+    color: #fff;
+    background: var(--accent);
+}
+
+.btn-confirm-yes:active {
+    opacity: 0.7;
+}
+
+.btn-confirm-no {
+    color: var(--text-secondary);
+}
+
+.btn-confirm-no:hover {
+    color: #fff;
+    background: var(--text-secondary);
+}
+
+.btn-confirm-no:active {
+    opacity: 0.7;
 }
 
 .ftp-form {
