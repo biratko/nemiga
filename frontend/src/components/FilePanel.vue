@@ -417,10 +417,11 @@ async function openTerminal() {
       const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
       const atIndex = authority.indexOf('@')
       const sessionId = atIndex === -1 ? authority : authority.slice(0, atIndex)
+      const remotePath = slashIndex === -1 ? '/' : rest.slice(slashIndex)
       const res = await fetch('/api/ssh/open-terminal', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({sessionId}),
+        body: JSON.stringify({sessionId, cwd: remotePath || '/'}),
       })
       const data = await res.json()
       if (!data.ok) {

@@ -182,7 +182,7 @@ function onDrop(op: 'copy' | 'move', sources: string[], destination: string) {
     }
 }
 
-async function launchExternal(endpoint: string) {
+async function launchExternal(mode: 'edit' | 'view') {
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
     if (!panel) return
 
@@ -193,18 +193,34 @@ async function launchExternal(endpoint: string) {
     const fullPath = joinPath(basePath, entry.name)
 
     try {
-        await fetch(endpoint, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({path: fullPath}),
-        })
+        if (basePath.startsWith('ssh://')) {
+            const rest = basePath.slice('ssh://'.length)
+            const slashIndex = rest.indexOf('/')
+            const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+            const atIndex = authority.indexOf('@')
+            const sessionId = atIndex === -1 ? authority : authority.slice(0, atIndex)
+            const remoteDir = slashIndex === -1 ? '/' : rest.slice(slashIndex)
+            const remotePath = remoteDir.endsWith('/') ? remoteDir + entry.name : remoteDir + '/' + entry.name
+            await fetch('/api/ssh/open-file', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({sessionId, remotePath, mode}),
+            })
+        } else {
+            const endpoint = mode === 'edit' ? '/api/fs/open' : '/api/fs/view'
+            await fetch(endpoint, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: fullPath}),
+            })
+        }
     } catch {
         // best-effort
     }
 }
 
-function openInEditor() { launchExternal('/api/fs/open') }
-function openInViewer() { launchExternal('/api/fs/view') }
+function openInEditor() { launchExternal('edit') }
+function openInViewer() { launchExternal('view') }
 
 async function onOpenFile(path: string) {
     try {

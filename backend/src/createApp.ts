@@ -72,7 +72,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
         ftpRouter(ftpSessionManager),
         ftpArchiveRouter(ftpArchiveCache, ftpSessionManager),
         ftpConnectionsRouter(ftpConnectionsService),
-        sshRouter(sshSessionManager),
+        sshRouter(sshSessionManager, settingsService),
         sshConnectionsRouter(sshConnectionsService),
     ]
     const app = createExpressApp(apiRouters, apiErrorHandler, {
