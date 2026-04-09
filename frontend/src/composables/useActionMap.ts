@@ -29,7 +29,7 @@ export const ACTION_DEFAULTS: Record<string, string[]> = {
 }
 
 export const MODIFIER_DEFAULTS: Record<string, string> = {
-    'drag.copy': 'Ctrl',
+    'drag.move': 'Ctrl',
 }
 
 /** Human-readable labels and category grouping for settings UI */
@@ -71,7 +71,7 @@ export const ACTION_CATEGORIES: {title: string; actions: {id: string; label: str
 ]
 
 export const MODIFIER_LABELS: {id: string; label: string}[] = [
-    {id: 'drag.copy', label: 'Drag = Copy'},
+    {id: 'drag.move', label: 'Drag = Move'},
 ]
 
 /**

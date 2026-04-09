@@ -16,7 +16,7 @@ const dropTargetPanelId = ref<string | null>(null)
 const dropTargetEntry = ref<FSEntry | 'parent' | null>(null)
 
 /** Copy modifier state captured from mousedown before drag starts */
-const copyModifierOnMouseDown = ref(false)
+const moveModifierOnMouseDown = ref(false)
 
 export function useDragAndDrop(
   panelId: string,
@@ -28,7 +28,7 @@ export function useDragAndDrop(
 
   function onMouseDown(e: MouseEvent) {
     if (e.button === 0) {
-      copyModifierOnMouseDown.value = isModifierActive('drag.copy', e)
+      moveModifierOnMouseDown.value = isModifierActive('drag.move', e)
     }
   }
 
@@ -52,7 +52,7 @@ export function useDragAndDrop(
 
     e.dataTransfer.setData(MIME, JSON.stringify(data))
     e.dataTransfer.effectAllowed = 'copyMove'
-    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = moveModifierOnMouseDown.value ? 'move' : 'copy'
 
     // Custom drag image with count
     if (entries.length > 1) {
@@ -72,7 +72,7 @@ export function useDragAndDrop(
     if (!canDrop) return
 
     e.preventDefault()
-    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = moveModifierOnMouseDown.value ? 'move' : 'copy'
     dropTargetPanelId.value = panelId
     dropTargetEntry.value = entry
   }
@@ -80,7 +80,7 @@ export function useDragAndDrop(
   function onDragOverPanel(e: DragEvent) {
     if (!e.dataTransfer || !e.dataTransfer.types.includes(MIME)) return
     e.preventDefault()
-    e.dataTransfer.dropEffect = copyModifierOnMouseDown.value ? 'copy' : 'move'
+    e.dataTransfer.dropEffect = moveModifierOnMouseDown.value ? 'move' : 'copy'
 
     // Only set panel as target if no specific entry target is set
     if (dropTargetPanelId.value !== panelId) {
@@ -115,7 +115,7 @@ export function useDragAndDrop(
     if (!raw) return null
 
     const data: DragData = JSON.parse(raw)
-    const op = copyModifierOnMouseDown.value ? 'copy' : 'move'
+    const op = moveModifierOnMouseDown.value ? 'move' : 'copy'
 
     let destination: string
     if (entry === 'parent') {
