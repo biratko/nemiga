@@ -17,6 +17,8 @@ const props = defineProps<{
     showHidden: boolean
     columnWidths: ColumnWidths
     searchColumnWidths: SearchColumnWidths
+    overlayDelayMs?: number
+    timeoutMs?: number
 }>()
 
 const emit = defineEmits<{
@@ -289,6 +291,8 @@ defineExpose({
             @sort-change="onSortChange"
             :column-widths="columnWidths"
             :search-column-widths="searchColumnWidths"
+            :overlay-delay-ms="overlayDelayMs"
+            :timeout-ms="timeoutMs"
             @column-widths-change="(w: any) => emit('column-widths-change', w)"
             @search-column-widths-change="(w: any) => emit('search-column-widths-change', w)"
             @drop="onDrop"

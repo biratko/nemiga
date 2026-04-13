@@ -16,4 +16,6 @@ export interface SettingsState {
     toastDurationMs?: number
     actionBindings?: Record<string, string[]>
     modifiers?: Record<string, string>
+    overlayDelayMs?: number
+    timeoutMs?: number
 }

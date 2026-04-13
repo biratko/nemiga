@@ -7,10 +7,11 @@ export function useDirectoryLoader() {
   const entries = ref<FSEntry[]>([])
   const error = ref<string | null>(null)
 
-  async function loadDirectory(path: string): Promise<boolean> {
+  async function loadDirectory(path: string, signal?: AbortSignal): Promise<boolean> {
     error.value = null
     try {
-      const res = await listDirectory(path)
+      const res = await listDirectory(path, signal)
+      if (signal?.aborted) return false
       if (res.ok && res.entries) {
         currentPath.value = res.path!
         entries.value = res.entries
@@ -21,6 +22,7 @@ export function useDirectoryLoader() {
       }
       return false
     } catch (e) {
+      if (e instanceof DOMException && e.name === 'AbortError') return false
       error.value = e instanceof Error ? e.message : 'Failed to load directory'
       return false
     }

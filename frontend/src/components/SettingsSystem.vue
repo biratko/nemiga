@@ -9,6 +9,8 @@ const props = defineProps<{
     terminal: string
     platform: string
     toastDurationMs: number
+    overlayDelayMs: number
+    timeoutMs: number
 }>()
 
 const emit = defineEmits<{
@@ -19,6 +21,8 @@ const emit = defineEmits<{
     'update:editor': [value: string]
     'update:terminal': [value: string]
     'update:toastDurationMs': [value: number]
+    'update:overlayDelayMs': [value: number]
+    'update:timeoutMs': [value: number]
 }>()
 </script>
 
@@ -65,6 +69,35 @@ const emit = defineEmits<{
                 @input="emit('update:toastDurationMs', Math.round(Number(($event.target as HTMLInputElement).value) * 1000))"
                 class="field-input"
                 style="width: 60px; flex: none;"
+            />
+        </div>
+    </div>
+    <div class="section">
+        <div class="section-title">Navigation</div>
+        <div class="field-row">
+            <label class="field-label">Overlay delay (ms)</label>
+            <input
+                type="number"
+                min="0"
+                max="2000"
+                step="100"
+                :value="overlayDelayMs"
+                @input="emit('update:overlayDelayMs', Math.max(0, Math.min(2000, Number(($event.target as HTMLInputElement).value))))"
+                class="field-input"
+                style="width: 80px; flex: none;"
+            />
+        </div>
+        <div class="field-row">
+            <label class="field-label">Timeout dialog (ms)</label>
+            <input
+                type="number"
+                min="1000"
+                max="60000"
+                step="1000"
+                :value="timeoutMs"
+                @input="emit('update:timeoutMs', Math.max(1000, Math.min(60000, Number(($event.target as HTMLInputElement).value))))"
+                class="field-input"
+                style="width: 80px; flex: none;"
             />
         </div>
     </div>

@@ -27,5 +27,8 @@ export default {
         'cursor-outline-style': 'solid',
         'cursor-outline-color': '#1e66f5',
         'selection-font-style': 'normal',
+        'busy-overlay-bg': 'rgba(255, 255, 255, 0.5)',
+        'busy-overlay-spinner-color': '#1e66f5',
+        'busy-overlay-text-color': '#4c4f69',
     },
 } satisfies ThemeDefinition

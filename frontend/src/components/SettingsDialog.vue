@@ -47,6 +47,8 @@ const viewer = ref(props.initialSettings?.viewer ?? '')
 const terminal = ref(props.initialSettings?.terminal ?? '')
 const fileTypes = ref<Record<string, FileTypeOverride>>({...(props.initialSettings?.fileTypes ?? {})})
 const toastDurationMs = ref(props.initialSettings?.toastDurationMs ?? 3000)
+const overlayDelayMs = ref(props.initialSettings?.overlayDelayMs ?? 300)
+const timeoutMs = ref(props.initialSettings?.timeoutMs ?? 5000)
 const platform = ref('linux')
 
 function onKeydown(e: KeyboardEvent) {
@@ -83,6 +85,8 @@ async function save() {
         terminal: terminal.value,
         fileTypes: fileTypes.value,
         toastDurationMs: toastDurationMs.value,
+        overlayDelayMs: overlayDelayMs.value,
+        timeoutMs: timeoutMs.value,
     }
     document.documentElement.style.zoom = String(zoom.value)
     await saveSettings(state)
@@ -145,6 +149,10 @@ async function save() {
                             @update:terminal="terminal = $event"
                             :toast-duration-ms="toastDurationMs"
                             @update:toast-duration-ms="toastDurationMs = $event"
+                            :overlay-delay-ms="overlayDelayMs"
+                            @update:overlay-delay-ms="overlayDelayMs = $event"
+                            :timeout-ms="timeoutMs"
+                            @update:timeout-ms="timeoutMs = $event"
                         />
                     </div>
                     <div class="dialog-footer">

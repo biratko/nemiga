@@ -27,6 +27,10 @@ export interface ThemeTokens {
     'cursor-outline-style': string
     'cursor-outline-color': string
     'selection-font-style': string
+    // Busy overlay
+    'busy-overlay-bg': string
+    'busy-overlay-spinner-color': string
+    'busy-overlay-text-color': string
 }
 
 export interface ThemeDefinition {

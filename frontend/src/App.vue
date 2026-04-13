@@ -27,6 +27,7 @@ import {joinPath} from '@/utils/path'
 import {launchFile} from '@/api/fs'
 import ToastContainer from '@/components/ToastContainer.vue'
 import {setToastDuration} from '@/composables/useToast'
+import {useBusyState} from '@/composables/useBusyState'
 
 interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
@@ -89,6 +90,7 @@ onNotify('ftp-session-renewed', (data: any) => {
 })
 
 const {matchAction, load: loadActionMap} = useActionMap()
+const {isBusy, isAnyBusy, cancelBusy} = useBusyState()
 
 const showSettings = ref(false)
 const showFtpConnect = ref<'left' | 'right' | null>(null)
@@ -421,12 +423,29 @@ function handleMousedown(e: MouseEvent) {
 function handleKeydown(e: KeyboardEvent) {
     if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || searchOp.value || showInput.value) return
 
+    // Handle Escape during busy state — cancel loading on active panel
+    if (e.key === 'Escape' && isBusy(activePanel.value).value) {
+        e.preventDefault()
+        cancelBusy(activePanel.value)
+        return
+    }
+
     const action = matchAction(e)
     if (!action) return
 
     const panel = activePanel.value === 'left' ? leftPanel.value : rightPanel.value
 
     e.preventDefault()
+
+    // Actions that have their own WS progress dialogs — never blocked by busy state
+    const wsActions = new Set(['file.copy', 'file.move', 'file.delete', 'search'])
+
+    // Block non-WS actions when active panel is busy
+    if (isBusy(activePanel.value).value && !wsActions.has(action)) return
+
+    // Block cross-panel navigation when target panel is busy
+    const oppositeId = activePanel.value === 'left' ? 'right' : 'left'
+    if ((action === 'navigate.in.opposite' || action === 'navigate.up.opposite') && isBusy(oppositeId).value) return
 
     switch (action) {
         case 'tab.new':
@@ -554,6 +573,8 @@ onUnmounted(() => {
                     :tabs-state="panelState.left"
                     :is-active="activePanel === 'left'"
                     :show-hidden="currentSettings.showHidden ?? false"
+                    :overlay-delay-ms="currentSettings?.overlayDelayMs"
+                    :timeout-ms="currentSettings?.timeoutMs"
                     :style="{ flex: '0 0 calc(' + splitPercent + '% - var(--splitter-width) / 2)' }"
                     :column-widths="columnWidths.left"
                     :search-column-widths="columnWidths.search"
@@ -598,6 +619,8 @@ onUnmounted(() => {
                     :tabs-state="panelState.right"
                     :is-active="activePanel === 'right'"
                     :show-hidden="currentSettings.showHidden ?? false"
+                    :overlay-delay-ms="currentSettings?.overlayDelayMs"
+                    :timeout-ms="currentSettings?.timeoutMs"
                     :column-widths="columnWidths.right"
                     :search-column-widths="columnWidths.search"
                     @tabs-change="state => onTabsChange('right', state)"

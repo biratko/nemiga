@@ -1,7 +1,7 @@
 import type { ListResponse, DriveEntry } from '@/types/fs'
 
-export async function listDirectory(path: string): Promise<ListResponse> {
-  const res = await fetch(`/api/fs/list?path=${encodeURIComponent(path)}`)
+export async function listDirectory(path: string, signal?: AbortSignal): Promise<ListResponse> {
+  const res = await fetch(`/api/fs/list?path=${encodeURIComponent(path)}`, { signal })
   if (!res.ok) {
     return {ok: false, error: {code: 'HTTP_ERROR', message: `Server returned ${res.status}`}}
   }

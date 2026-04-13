@@ -10,6 +10,8 @@ import { useInlineRename } from '@/composables/useInlineRename'
 import { useContextMenu } from '@/composables/useContextMenu'
 import { useNotifyWs } from '@/composables/useNotifyWs'
 import { useDirectoryWatcher } from '@/composables/useDirectoryWatcher'
+import { useBusyState } from '@/composables/useBusyState'
+import BusyOverlay from '@/components/BusyOverlay.vue'
 import { commitFtpArchive, fetchDirSize } from '@/api/fs'
 import ContextMenu from '@/components/ContextMenu.vue'
 import DriveSelector from '@/components/DriveSelector.vue'
@@ -33,6 +35,8 @@ const props = defineProps<{
   searchResults?: FSEntry[]
   columnWidths?: ColumnWidths
   searchColumnWidths?: SearchColumnWidths
+  overlayDelayMs?: number
+  timeoutMs?: number
 }>()
 
 const emit = defineEmits<{
@@ -53,6 +57,8 @@ const emit = defineEmits<{
 const panelContentRef = ref<HTMLElement | null>(null)
 
 const { currentPath, entries, error, loadDirectory: rawLoad } = useDirectoryLoader()
+const { startBusy, endBusy, isBusy } = useBusyState()
+const panelBusy = isBusy(props.panelId)
 
 const isSearchMode = computed(() => !!props.searchResults)
 
@@ -230,30 +236,36 @@ const visibleSlice = computed(() =>
 let watchedPath: string | null = null
 
 async function loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]; cursorName?: string}) {
-  const ok = await rawLoad(path)
-  if (ok) {
-    dirSizes.value = new Map()
-    if (restoreState) {
-      cursorIndex.value = restoreState.cursorIndex ?? 0
-      selectedNames.value = new Set(restoreState.selectedNames ?? [])
-    } else {
-      resetCursorSelection()
-    }
-    if (restoreState?.cursorName) {
-      const idx = sortedEntries.value.findIndex(e => e.name === restoreState.cursorName)
-      if (idx >= 0) {
-        cursorIndex.value = idx + 1
-        scrollToIndex(cursorIndex.value)
+  const ctrl = startBusy(props.panelId)
+  try {
+    const ok = await rawLoad(path, ctrl.signal)
+    if (ctrl.signal.aborted) return
+    if (ok) {
+      dirSizes.value = new Map()
+      if (restoreState) {
+        cursorIndex.value = restoreState.cursorIndex ?? 0
+        selectedNames.value = new Set(restoreState.selectedNames ?? [])
+      } else {
+        resetCursorSelection()
       }
+      if (restoreState?.cursorName) {
+        const idx = sortedEntries.value.findIndex(e => e.name === restoreState.cursorName)
+        if (idx >= 0) {
+          cursorIndex.value = idx + 1
+          scrollToIndex(cursorIndex.value)
+        }
+      }
+      // Update directory watcher
+      const newPath = currentPath.value
+      if (watchedPath !== newPath) {
+        if (watchedPath) unwatchDir(watchedPath)
+        watchDir(newPath)
+        watchedPath = newPath
+      }
+      emit('navigate', currentPath.value)
     }
-    // Update directory watcher
-    const newPath = currentPath.value
-    if (watchedPath !== newPath) {
-      if (watchedPath) unwatchDir(watchedPath)
-      watchDir(newPath)
-      watchedPath = newPath
-    }
-    emit('navigate', currentPath.value)
+  } finally {
+    if (!ctrl.signal.aborted) endBusy(props.panelId)
   }
 }
 
@@ -538,7 +550,7 @@ function entryDir(entry: FSEntry): string {
   return currentPath.value
 }
 
-defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize })
+defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize, panelBusy })
 
 function onDocumentMouseUp(e: MouseEvent) {
   if (e.button === 2) onPanelRightMouseUp()
@@ -676,6 +688,11 @@ onBeforeUnmount(() => {
         </tbody>
       </table>
       <div v-if="error" class="error">{{ error }}</div>
+      <BusyOverlay
+        :panel-id="panelId"
+        :overlay-delay-ms="overlayDelayMs ?? 300"
+        :timeout-ms="timeoutMs ?? 5000"
+      />
     </div>
     <ContextMenu
       v-if="menuState.visible"
@@ -796,6 +813,7 @@ onBeforeUnmount(() => {
   flex: 1;
   overflow-y: auto;
   cursor: default;
+  position: relative;
 }
 
 .file-table {

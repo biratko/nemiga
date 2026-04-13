@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import type { FSEntry } from '@/types/fs'
 import { joinPath } from '@/utils/path'
 import { useActionMap } from '@/composables/useActionMap'
+import { useBusyState } from '@/composables/useBusyState'
 
 export interface DragData {
   sources: string[]
@@ -25,6 +26,7 @@ export function useDragAndDrop(
   cursorEntry: Ref<FSEntry | null>,
 ) {
   const {isModifierActive} = useActionMap()
+  const { isAnyBusy } = useBusyState()
 
   function onMouseDown(e: MouseEvent) {
     if (e.button === 0) {
@@ -109,6 +111,9 @@ export function useDragAndDrop(
     e.preventDefault()
     dropTargetPanelId.value = null
     dropTargetEntry.value = null
+
+    // Block drop when any panel is busy
+    if (isAnyBusy().value) return null
 
     if (!e.dataTransfer) return null
     const raw = e.dataTransfer.getData(MIME)
