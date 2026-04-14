@@ -12,6 +12,7 @@ import {MkdirConnectionHandler} from './MkdirConnectionHandler.js'
 import {ExtractConnectionHandler} from './ExtractConnectionHandler.js'
 import {PackConnectionHandler} from './PackConnectionHandler.js'
 import {SearchConnectionHandler} from './SearchConnectionHandler.js'
+import {MultiRenameConnectionHandler} from './MultiRenameConnectionHandler.js'
 
 export class WsServer {
     private wss: WebSocketServer
@@ -44,6 +45,8 @@ export class WsServer {
                 factory = async (ws) => new PackConnectionHandler(ws, this.router)
             } else if (pathname === '/ws/operations/search') {
                 factory = async (ws) => new SearchConnectionHandler(ws, this.router)
+            } else if (pathname === '/ws/operations/multi-rename') {
+                factory = async (ws) => new MultiRenameConnectionHandler(ws, this.router)
             }
 
             if (!factory) {
