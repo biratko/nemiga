@@ -317,3 +317,51 @@ export interface WsSearchCancelCommand {
 export type WsSearchClientCommand =
     | WsSearchStartCommand
     | WsSearchCancelCommand
+
+// ── MultiRename: Server → Client events ──
+
+export interface WsMultiRenameProgressEvent {
+    event: 'progress'
+    current: number
+    total: number
+    name: string
+}
+
+export interface WsMultiRenameErrorItemEvent {
+    event: 'error_item'
+    index: number
+    name: string
+    message: string
+}
+
+export interface WsMultiRenameCompleteEvent {
+    event: 'complete'
+    renamed: number
+    errors: number
+}
+
+export interface WsMultiRenameErrorEvent {
+    event: 'error'
+    error: ErrorInfo
+}
+
+export type WsMultiRenameServerEvent =
+    | WsMultiRenameProgressEvent
+    | WsMultiRenameErrorItemEvent
+    | WsMultiRenameCompleteEvent
+    | WsMultiRenameErrorEvent
+
+// ── MultiRename: Client → Server commands ──
+
+export interface WsMultiRenameStartCommand {
+    command: 'start'
+    renames: Array<{path: string; newName: string}>
+}
+
+export interface WsMultiRenameCancelCommand {
+    command: 'cancel'
+}
+
+export type WsMultiRenameClientCommand =
+    | WsMultiRenameStartCommand
+    | WsMultiRenameCancelCommand
