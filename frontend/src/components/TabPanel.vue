@@ -230,6 +230,7 @@ defineExpose({
     get currentPath() { return filePanelRef.value?.currentPath ?? activeTab.value?.path ?? '/' },
     get cursorIndex() { return filePanelRef.value?.cursorIndex ?? 0 },
     get cursorEntry() { return filePanelRef.value?.cursorEntry ?? null },
+    get allEntries() { return filePanelRef.value?.allEntries ?? [] },
     get selectedNamesArray() { return filePanelRef.value?.selectedNamesArray ?? [] },
     get selectedEntries() { return filePanelRef.value?.selectedEntries ?? [] },
     loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]}) { return filePanelRef.value?.loadDirectory(path, restoreState) },
