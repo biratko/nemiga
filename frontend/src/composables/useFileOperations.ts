@@ -23,6 +23,12 @@ export interface MkdirOp {
   basePath: string
 }
 
+export interface MultiRenameOp {
+  basePath: string
+  entries: FSEntry[]
+  allEntries: FSEntry[]
+}
+
 function buildPaths(selected: FSEntry[], basePath: string): string[] {
   return selected.map(e => {
     const dir = e.searchPath && e.searchPath !== '.'
@@ -41,6 +47,7 @@ export function useFileOperations(
   const moveOp = ref<MoveOp | null>(null)
   const deleteOp = ref<DeleteOp | null>(null)
   const mkdirOp = ref<MkdirOp | null>(null)
+  const multiRenameOp = ref<MultiRenameOp | null>(null)
 
   function getSourcePanel(): PanelAPI | undefined {
     return activePanel.value === 'left' ? leftPanel.value : rightPanel.value
@@ -106,5 +113,19 @@ export function useFileOperations(
     mkdirOp.value = { basePath: source.currentPath }
   }
 
-  return { copyOp, moveOp, deleteOp, mkdirOp, startCopy, startMove, startDelete, startMkdir }
+  function startMultiRename() {
+    const source = getSourcePanel()
+    if (!source) return
+
+    const entries = getOperationEntries(source)
+    if (!entries.length) return
+
+    multiRenameOp.value = {
+      basePath: source.currentPath,
+      entries,
+      allEntries: source.allEntries,
+    }
+  }
+
+  return { copyOp, moveOp, deleteOp, mkdirOp, multiRenameOp, startCopy, startMove, startDelete, startMkdir, startMultiRename }
 }
