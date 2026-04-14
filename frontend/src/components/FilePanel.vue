@@ -550,7 +550,9 @@ function entryDir(entry: FSEntry): string {
   return currentPath.value
 }
 
-defineExpose({ currentPath, cursorIndex, cursorEntry, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize, panelBusy })
+const allEntries = computed(() => sortedEntries.value)
+
+defineExpose({ currentPath, cursorIndex, cursorEntry, allEntries, selectedNamesArray, selectedEntries, loadDirectory, moveCursorUp, moveCursorDown, enterCursor, goUp, toggleCursorSelection, setKeyboardActive, startRename: startRenameCurrent, calcDirSize, panelBusy })
 
 function onDocumentMouseUp(e: MouseEvent) {
   if (e.button === 2) onPanelRightMouseUp()

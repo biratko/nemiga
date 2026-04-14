@@ -4,6 +4,7 @@ export interface PanelAPI {
     currentPath: string
     cursorIndex: number
     cursorEntry: FSEntry | null
+    allEntries: FSEntry[]
     selectedNamesArray: string[]
     selectedEntries: FSEntry[]
     loadDirectory(path: string, restoreState?: {cursorIndex?: number; selectedNames?: string[]}): Promise<void>
