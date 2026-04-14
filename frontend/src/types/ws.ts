@@ -48,3 +48,10 @@ export type SearchEvents = {
     complete: {event: 'complete'; found: number; scanned: number}
     error: {event: 'error'; error: OperationError}
 }
+
+export type MultiRenameEvents = {
+    progress: {event: 'progress'; current: number; total: number; name: string}
+    error_item: {event: 'error_item'; index: number; name: string; message: string}
+    complete: {event: 'complete'; renamed: number; errors: number}
+    error: {event: 'error'; error: OperationError}
+}
