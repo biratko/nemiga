@@ -112,6 +112,7 @@ const CASE_OPTIONS: {value: CaseTransform; label: string}[] = [
 
 <template>
     <ModalDialog title="Multi-Rename" :wide="true" @close="close(false)">
+        <div class="mr-content">
         <template v-if="phase === 'editing'">
             <div class="mr-form">
                 <div class="mr-row">
@@ -209,10 +210,19 @@ const CASE_OPTIONS: {value: CaseTransform; label: string}[] = [
                 <button class="mr-btn mr-btn-primary" @click="close(true)">Close</button>
             </div>
         </template>
+        </div>
     </ModalDialog>
 </template>
 
 <style scoped>
+.mr-content {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
 .mr-form {
     display: flex;
     flex-direction: column;
@@ -255,7 +265,8 @@ const CASE_OPTIONS: {value: CaseTransform; label: string}[] = [
 }
 
 .mr-table-container {
-    max-height: 300px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--border);
 }
