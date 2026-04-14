@@ -10,6 +10,7 @@ import MkdirDialog from './components/MkdirDialog.vue'
 import ExtractDialog from './components/ExtractDialog.vue'
 import PackDialog from './components/PackDialog.vue'
 import SearchDialog from './components/SearchDialog.vue'
+import MultiRenameDialog from '@/components/MultiRenameDialog.vue'
 import type {FSEntry} from './types/fs'
 import SettingsDialog from './components/SettingsDialog.vue'
 import type {SettingsState} from '@/types/settings'
@@ -99,7 +100,7 @@ const currentSettings = ref<SettingsState>({})
 
 
 const {initTheme, applyTheme} = useTheme()
-const {copyOp, moveOp, deleteOp, mkdirOp, startCopy, startMove, startDelete, startMkdir} = useFileOperations(activePanel, leftPanel, rightPanel)
+const {copyOp, moveOp, deleteOp, mkdirOp, multiRenameOp, startCopy, startMove, startDelete, startMkdir, startMultiRename} = useFileOperations(activePanel, leftPanel, rightPanel)
 
 const extractOp = ref<{archivePath: string; destination: string; archiveName: string; subfolder: string; skipInput: boolean} | null>(null)
 const packOp = ref<{defaultName: string; sourcePaths: string[]; destination: string} | null>(null)
@@ -269,6 +270,14 @@ function onDeleteClose(deleted: boolean) {
     }
 }
 
+function onMultiRenameClose(renamed: boolean) {
+    multiRenameOp.value = null
+    if (renamed) {
+        leftPanel.value?.loadDirectory(leftPanel.value.currentPath)
+        rightPanel.value?.loadDirectory(rightPanel.value.currentPath)
+    }
+}
+
 function onSshConnected(sshPath: string, connectionName?: string) {
     const panel = showSshConnect.value === 'left' ? leftPanel.value : rightPanel.value
     showSshConnect.value = null
@@ -421,7 +430,7 @@ function handleMousedown(e: MouseEvent) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || extractOp.value || packOp.value || searchOp.value || showInput.value) return
+    if (showSettings.value || copyOp.value || moveOp.value || deleteOp.value || mkdirOp.value || multiRenameOp.value || extractOp.value || packOp.value || searchOp.value || showInput.value) return
 
     // Handle Escape during busy state — cancel loading on active panel
     if (e.key === 'Escape' && isBusy(activePanel.value).value) {
@@ -438,7 +447,7 @@ function handleKeydown(e: KeyboardEvent) {
     e.preventDefault()
 
     // Actions that have their own WS progress dialogs — never blocked by busy state
-    const wsActions = new Set(['file.copy', 'file.move', 'file.delete', 'search'])
+    const wsActions = new Set(['file.copy', 'file.move', 'file.delete', 'search', 'file.multi-rename'])
 
     // Block non-WS actions when active panel is busy
     if (isBusy(activePanel.value).value && !wsActions.has(action)) return
@@ -494,6 +503,9 @@ function handleKeydown(e: KeyboardEvent) {
             break
         case 'file.rename':
             if (!panel?.currentPath.includes('::')) panel?.startRename()
+            break
+        case 'file.multi-rename':
+            startMultiRename()
             break
         case 'file.view':
             openInViewer()
@@ -667,6 +679,13 @@ onUnmounted(() => {
             :names="deleteOp.names"
             :paths="deleteOp.paths"
             @close="onDeleteClose"
+        />
+        <MultiRenameDialog
+            v-if="multiRenameOp"
+            :base-path="multiRenameOp.basePath"
+            :entries="multiRenameOp.entries"
+            :all-entries="multiRenameOp.allEntries"
+            @close="onMultiRenameClose"
         />
         <ExtractDialog
             v-if="extractOp"
