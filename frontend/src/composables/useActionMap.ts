@@ -15,6 +15,7 @@ export const ACTION_DEFAULTS: Record<string, string[]> = {
 
     // File operations
     'file.rename':            ['F2'],
+    'file.multi-rename':      ['Ctrl+M'],
     'file.view':              ['F3'],
     'file.edit':              ['F4'],
     'file.copy':              ['F5'],
@@ -52,6 +53,7 @@ export const ACTION_CATEGORIES: {title: string; actions: {id: string; label: str
         title: 'File Operations',
         actions: [
             {id: 'file.rename', label: 'Rename'},
+            {id: 'file.multi-rename', label: 'Multi-Rename'},
             {id: 'file.view', label: 'View'},
             {id: 'file.edit', label: 'Edit'},
             {id: 'file.copy', label: 'Copy'},
