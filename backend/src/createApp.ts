@@ -38,6 +38,7 @@ export interface AppOptions {
     frontendDist?: string
     ftpSessionManagerOptions?: SessionManagerOptions
     ftpArchiveCacheOptions?: ArchiveCacheOptions
+    workspaceDir?: string
 }
 
 export function createApp(options: AppOptions = {}): AppInstance {
@@ -57,7 +58,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const sshSessionManager = new SshSessionManager()
     sshSessionManager.setNotifyServer(notifyServer)
     const router = new ProviderRouter(provider, archiveProvider, pathGuard, ftpSessionManager, ftpArchiveProvider, sshSessionManager)
-    const storage = new JsonFileStorage()
+    const storage = new JsonFileStorage({configDir: options.workspaceDir})
     const workspaceService = new WorkspaceService(storage)
     const settingsService = new SettingsService(storage)
     const ftpConnectionsService = new FtpConnectionsService(storage)

@@ -9,7 +9,9 @@ const allowedRoots = process.env.ALLOWED_ROOTS
     ? process.env.ALLOWED_ROOTS.split(path.delimiter).filter(Boolean)
     : undefined
 
-const {server, cleanup} = createApp({allowedRoots})
+const workspaceDir = process.env.WORKSPACE_DIR || undefined
+
+const {server, cleanup} = createApp({allowedRoots, workspaceDir})
 
 server.listen(port, host, () => {
     console.log(`Nemiga listening on http://${host}:${port}`)
