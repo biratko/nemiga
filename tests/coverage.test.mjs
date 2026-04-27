@@ -85,3 +85,37 @@ test('computeStatus: ID covered AND in allowlist → allowlistedAlreadyCovered (
   })
   assert.deepEqual([...status.allowlistedAlreadyCovered], ['TEST-001-01'])
 })
+
+import { renderReport } from './coverage.mjs'
+
+test('renderReport: produces markdown with totals and per-domain sections', () => {
+  const reqs = [
+    { id: 'NAV-001', file: '/r/navigation.md', line: 5 },
+    { id: 'NAV-001-01', file: '/r/navigation.md', line: 6 },
+    { id: 'FILE-001', file: '/r/file-operations.md', line: 3 },
+  ]
+  const entries = [
+    {
+      ids: ['NAV-001'], status: 'passed', name: 'splitter exists',
+      file: '/e2e/splitter.spec.ts', line: 14, source: 'playwright'
+    }
+  ]
+  const status = {
+    covered: new Set(['NAV-001']),
+    uncovered: new Set(['FILE-001']),
+    phantom: new Set(),
+    allowlistedUncovered: new Set(['NAV-001-01']),
+    allowlistedAlreadyCovered: new Set(),
+  }
+
+  const md = renderReport({ requirements: reqs, entries, status, generatedAt: '2026-04-25T10:00:00Z' })
+
+  assert.match(md, /Generated: 2026-04-25T10:00:00Z/)
+  assert.match(md, /Requirements: 3 total, 1 covered/)
+  assert.match(md, /## NAV/)
+  assert.match(md, /## FILE/)
+  assert.match(md, /\[x\] \*\*NAV-001\*\*/)
+  assert.match(md, /splitter\.spec\.ts:14/)
+  assert.match(md, /\[ \] \*\*NAV-001-01\*\*.*allowlist/)
+  assert.match(md, /\[ \] \*\*FILE-001\*\*/)
+})

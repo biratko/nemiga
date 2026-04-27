@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { readFile } from 'node:fs/promises'
+import { readFile, writeFile, glob } from 'node:fs/promises'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
-import { glob } from 'node:fs/promises'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PROJECT_ROOT = resolve(__dirname, '..')
@@ -127,6 +126,85 @@ export function computeStatus({ requirements, entries, allowlist }) {
   return { covered, uncovered, phantom, allowlistedUncovered, allowlistedAlreadyCovered }
 }
 
+function domainOf(id) {
+  return id.split('-')[0]
+}
+
+/**
+ * Возвращает Map<id, entry[]> — какие тесты покрывают каждый ID (только passed).
+ */
+function buildCoverageIndex(entries) {
+  const idx = new Map()
+  for (const entry of entries) {
+    if (entry.status !== 'passed') continue
+    for (const id of entry.ids) {
+      if (!idx.has(id)) idx.set(id, [])
+      idx.get(id).push(entry)
+    }
+  }
+  return idx
+}
+
+export function renderReport({ requirements, entries, status, generatedAt }) {
+  const idx = buildCoverageIndex(entries)
+  const total = requirements.length
+  const lines = []
+
+  lines.push('# Test Coverage Report')
+  lines.push('')
+  lines.push(`Generated: ${generatedAt}`)
+  lines.push(
+    `Requirements: ${total} total, ${status.covered.size} covered ` +
+    `(${total === 0 ? '100.0' : ((status.covered.size / total) * 100).toFixed(1)}%), ` +
+    `${status.allowlistedUncovered.size} in allowlist, ` +
+    `${status.uncovered.size} uncovered.`
+  )
+  lines.push('')
+
+  const byDomain = new Map()
+  for (const r of requirements) {
+    const d = domainOf(r.id)
+    if (!byDomain.has(d)) byDomain.set(d, [])
+    byDomain.get(d).push(r)
+  }
+
+  lines.push('## By domain')
+  lines.push('')
+  lines.push('| Domain | Total | Covered | % |')
+  lines.push('|--------|------:|--------:|--:|')
+  for (const [d, list] of [...byDomain.entries()].sort()) {
+    const covered = list.filter(r => status.covered.has(r.id)).length
+    const pct = list.length === 0 ? '100.0' : ((covered / list.length) * 100).toFixed(1)
+    lines.push(`| ${d} | ${list.length} | ${covered} | ${pct}% |`)
+  }
+  lines.push('')
+
+  for (const [d, list] of [...byDomain.entries()].sort()) {
+    lines.push(`## ${d}`)
+    lines.push('')
+    for (const r of list) {
+      const checked = status.covered.has(r.id)
+      const box = checked ? '[x]' : '[ ]'
+      const tests = idx.get(r.id) || []
+      const suffix = checked
+        ? `\n      ${tests.map(t => `_${relativeFile(t.file)}:${t.line}_ (${t.source})`).join(', ')}`
+        : status.allowlistedUncovered.has(r.id)
+          ? ' — *in allowlist*'
+          : ''
+      lines.push(`- ${box} **${r.id}**${suffix}`)
+    }
+    lines.push('')
+  }
+
+  return lines.join('\n')
+}
+
+function relativeFile(file) {
+  // make absolute file paths a bit shorter for the report
+  const cwd = PROJECT_ROOT
+  return file.startsWith(cwd) ? file.slice(cwd.length + 1) : file
+}
+
 async function listRequirementFiles() {
   const files = []
   for await (const f of glob(REQUIREMENTS_GLOB)) {
@@ -183,11 +261,28 @@ async function runCheck() {
   return failed ? 1 : 0
 }
 
+async function runReport() {
+  const reqFiles = await listRequirementFiles()
+  const reqs = await scanRequirements(reqFiles)
+  const entries = await loadRegistries(await listRegistryFiles())
+  const allowlist = await loadAllowlist(ALLOWLIST_PATH)
+  const status = computeStatus({ requirements: reqs.ids, entries, allowlist })
+  const md = renderReport({
+    requirements: reqs.ids,
+    entries,
+    status,
+    generatedAt: new Date().toISOString(),
+  })
+  const reportPath = join(PROJECT_ROOT, 'docs/test-coverage.md')
+  await writeFile(reportPath, md, 'utf-8')
+  console.log(`Report written: ${reportPath}`)
+  return 0
+}
+
 async function main() {
   const arg = process.argv[2]
-  if (arg === '--check') {
-    process.exit(await runCheck())
-  }
+  if (arg === '--check') process.exit(await runCheck())
+  if (arg === '--report') process.exit(await runReport())
   console.error('Usage: coverage.mjs --check|--report|--update-allowlist')
   process.exit(2)
 }
