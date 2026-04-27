@@ -199,6 +199,23 @@ export function renderReport({ requirements, entries, status, generatedAt }) {
   return lines.join('\n')
 }
 
+export function computeUpdatedAllowlist(content, covered) {
+  const out = []
+  for (const line of content.split('\n')) {
+    const stripped = line.split('#')[0].trim()
+    if (!stripped) {
+      out.push(line)
+      continue
+    }
+    if (covered.has(stripped)) {
+      // skip line
+      continue
+    }
+    out.push(line)
+  }
+  return out.join('\n')
+}
+
 function relativeFile(file) {
   // make absolute file paths a bit shorter for the report
   const cwd = PROJECT_ROOT
@@ -279,10 +296,31 @@ async function runReport() {
   return 0
 }
 
+async function runUpdateAllowlist() {
+  const reqFiles = await listRequirementFiles()
+  const reqs = await scanRequirements(reqFiles)
+  const entries = await loadRegistries(await listRegistryFiles())
+  const allowlist = await loadAllowlist(ALLOWLIST_PATH)
+  const status = computeStatus({ requirements: reqs.ids, entries, allowlist })
+
+  let original
+  try {
+    original = await readFile(ALLOWLIST_PATH, 'utf-8')
+  } catch (err) {
+    if (err.code === 'ENOENT') original = ''
+    else throw err
+  }
+  const updated = computeUpdatedAllowlist(original, status.covered)
+  await writeFile(ALLOWLIST_PATH, updated, 'utf-8')
+  console.log(`Allowlist updated: removed ${status.allowlistedAlreadyCovered.size} now-covered IDs`)
+  return 0
+}
+
 async function main() {
   const arg = process.argv[2]
   if (arg === '--check') process.exit(await runCheck())
   if (arg === '--report') process.exit(await runReport())
+  if (arg === '--update-allowlist') process.exit(await runUpdateAllowlist())
   console.error('Usage: coverage.mjs --check|--report|--update-allowlist')
   process.exit(2)
 }

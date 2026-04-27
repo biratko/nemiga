@@ -119,3 +119,39 @@ test('renderReport: produces markdown with totals and per-domain sections', () =
   assert.match(md, /\[ \] \*\*NAV-001-01\*\*.*allowlist/)
   assert.match(md, /\[ \] \*\*FILE-001\*\*/)
 })
+
+import { computeUpdatedAllowlist } from './coverage.mjs'
+
+test('computeUpdatedAllowlist: removes IDs that are now covered', () => {
+  const original = `# Allowlist
+
+NAV-001    # not implemented
+NAV-002    # not implemented either
+FILE-001   # placeholder
+`
+  const covered = new Set(['NAV-001', 'FILE-001'])
+  const result = computeUpdatedAllowlist(original, covered)
+  // NAV-001 and FILE-001 must be removed; NAV-002 stays.
+  assert.match(result, /NAV-002/)
+  assert.doesNotMatch(result, /^NAV-001\b/m)
+  assert.doesNotMatch(result, /^FILE-001\b/m)
+  // Header preserved
+  assert.match(result, /^# Allowlist/)
+})
+
+test('computeUpdatedAllowlist: empty input produces empty', () => {
+  const result = computeUpdatedAllowlist('', new Set())
+  assert.equal(result.trim(), '')
+})
+
+test('computeUpdatedAllowlist: preserves comments-only lines', () => {
+  const original = `# top comment
+# more comment
+
+NAV-001
+`
+  const result = computeUpdatedAllowlist(original, new Set(['NAV-001']))
+  assert.match(result, /# top comment/)
+  assert.match(result, /# more comment/)
+  assert.doesNotMatch(result, /NAV-001/)
+})
