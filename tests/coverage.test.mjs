@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
-import { scanRequirements } from './coverage.mjs'
+import { scanRequirements, loadAllowlist } from './coverage.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIX = join(__dirname, 'fixtures')
@@ -154,4 +154,22 @@ NAV-001
   assert.match(result, /# top comment/)
   assert.match(result, /# more comment/)
   assert.doesNotMatch(result, /NAV-001/)
+})
+
+test('loadAllowlist + computeStatus: unknown allowlist IDs are surfaced via difference', async () => {
+  const reqs = { ids: [{ id: 'NAV-001', file: 'x', line: 1 }] }
+  const allowlist = new Set(['NAV-001', 'BOGUS-999'])
+  const reqIdSet = new Set(reqs.ids.map(r => r.id))
+  const unknown = [...allowlist].filter(id => !reqIdSet.has(id))
+  assert.deepEqual(unknown, ['BOGUS-999'])
+})
+
+test('loadAllowlist: ignores comments and blank lines', async () => {
+  const fixture = join(FIX, 'allowlist-mixed.txt')
+  const { writeFile, unlink } = await import('node:fs/promises')
+  await writeFile(fixture,
+    `# header comment\n\nNAV-001\nFILE-002   # trailing comment\n\n# another\n`, 'utf-8')
+  const set = await loadAllowlist(fixture)
+  await unlink(fixture)
+  assert.deepEqual([...set].sort(), ['FILE-002', 'NAV-001'])
 })

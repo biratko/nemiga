@@ -251,6 +251,15 @@ async function runCheck() {
 
   const entries = await loadRegistries(await listRegistryFiles())
   const allowlist = await loadAllowlist(ALLOWLIST_PATH)
+
+  const reqIdSet = new Set(reqs.ids.map(r => r.id))
+  const allowlistedNotInRequirements = [...allowlist].filter(id => !reqIdSet.has(id))
+  if (allowlistedNotInRequirements.length) {
+    console.error('Allowlist references unknown IDs (not in requirements):')
+    for (const id of allowlistedNotInRequirements.sort()) console.error(`  ${id}`)
+    return 1
+  }
+
   const status = computeStatus({ requirements: reqs.ids, entries, allowlist })
 
   let failed = false

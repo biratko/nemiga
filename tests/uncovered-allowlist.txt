@@ -1,0 +1,7 @@
+# Uncovered requirement IDs.
+#
+# Format: one REQ-ID per line, optional "# comment" suffix.
+# This file is enforced by `make test-coverage` (tests/coverage.mjs --check):
+#   - An ID listed here AND already covered  → error (remove the line).
+#   - An ID NOT here AND not covered         → error (write a test or add the line).
+#   - All IDs must exist in docs/requirements/.
