@@ -16,7 +16,7 @@ export default defineConfig({
   globalSetup: './helpers/global-setup.ts',
   globalTeardown: './helpers/global-teardown.ts',
   webServer: {
-    command: `cd ${PROJECT_ROOT} && make build && PORT=8181 ALLOWED_ROOTS=${E2E_ROOT} WORKSPACE_DIR=${E2E_ROOT}/workspace node backend/dist/main.js`,
+    command: `cd ${PROJECT_ROOT} && make frontend && cd backend && PORT=8181 ALLOWED_ROOTS=${E2E_ROOT} WORKSPACE_DIR=${E2E_ROOT}/workspace npx tsx src/main.ts`,
     url: 'http://127.0.0.1:8181',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
