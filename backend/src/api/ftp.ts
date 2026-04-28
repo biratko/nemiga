@@ -15,11 +15,15 @@ export function ftpRouter(ftpSessionManager: FtpSessionManager): Router {
             res.json({ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Invalid protocol'}})
             return
         }
-        const sessionId = await ftpSessionManager.connect({
-            protocol, host, port: Number(port), username, password: password ?? '',
-            rejectUnauthorized: rejectUnauthorized ?? true,
-        })
-        res.json({ok: true, sessionId})
+        try {
+            const sessionId = await ftpSessionManager.connect({
+                protocol, host, port: Number(port), username, password: password ?? '',
+                rejectUnauthorized: rejectUnauthorized ?? true,
+            })
+            res.json({ok: true, sessionId})
+        } catch (err: any) {
+            res.json({ok: false, error: {code: ErrorCode.CONNECTION_FAILED, message: err?.message ?? 'Connection failed'}})
+        }
     })
 
     router.post('/ftp/disconnect', async (req, res) => {

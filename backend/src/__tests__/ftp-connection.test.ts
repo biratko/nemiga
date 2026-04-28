@@ -55,12 +55,15 @@ describe('FTP Connection & Session Lifecycle', () => {
     })
 
     it('should connect via FTPS (TLS)', async () => {
+      // Test fixture uses a self-signed certificate; production users would
+      // toggle this via the connect dialog's "Verify server certificate" option.
       const sessionId = await manager.connect({
         protocol: 'ftps',
         host: ftpsServer.host,
         port: ftpsServer.port,
         username: 'test',
         password: 'test',
+        rejectUnauthorized: false,
       })
       expect(sessionId).toBeTruthy()
       expect(manager.get(sessionId)).toBeDefined()

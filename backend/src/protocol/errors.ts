@@ -14,6 +14,7 @@ export const ErrorCode = {
 
     // Session
     SESSION_NOT_FOUND: 'SESSION_NOT_FOUND',
+    CONNECTION_FAILED: 'CONNECTION_FAILED',
 } as const
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode]
