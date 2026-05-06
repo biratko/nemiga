@@ -12,11 +12,15 @@ const isWSL = process.platform === 'linux' && (() => {
     catch { return false }
 })()
 
-function getDefaultTerminal(): string {
-    if (isWSL) return 'wt.exe -d %P'
-    if (process.platform === 'win32') return 'wt'
-    if (process.platform === 'darwin') return 'open -a Terminal'
+export function defaultTerminalFor(platform: NodeJS.Platform, isWsl: boolean): string {
+    if (isWsl) return 'wt.exe -d %P'
+    if (platform === 'win32') return 'wt'
+    if (platform === 'darwin') return 'open -a Terminal'
     return 'x-terminal-emulator'
+}
+
+function getDefaultTerminal(): string {
+    return defaultTerminalFor(process.platform, isWSL)
 }
 
 export function makeFsTerminalHandler(settingsService: SettingsService, pathGuard: PathGuard) {
