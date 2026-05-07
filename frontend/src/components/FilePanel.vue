@@ -137,6 +137,15 @@ function getFtpArchiveFilePart(path: string): string | null {
   return path.slice(0, sepIdx)
 }
 
+function extractFtpSessionIdFromPath(path: string): string | null {
+  if (!path.startsWith('ftp://')) return null
+  const rest = path.slice('ftp://'.length)
+  const slashIndex = rest.indexOf('/')
+  const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
+  const atIndex = authority.indexOf('@')
+  return atIndex === -1 ? authority : authority.slice(0, atIndex)
+}
+
 async function maybeCommitFtpArchive(targetPath: string): Promise<void> {
   const current = getFtpArchiveFilePart(currentPath.value)
   if (!current) return
@@ -159,9 +168,12 @@ function onCommitErrorResolved() {
 const {on: onNotify} = useNotifyWs()
 const {watch: watchDir, unwatch: unwatchDir, onChange: onDirChange} = useDirectoryWatcher()
 onNotify('ftp-archive-lost', (data: any) => {
-  const ftpPath = data?.ftpPath as string | undefined
-  if (!ftpPath || !currentPath.value.startsWith(ftpPath)) return
-  commitErrorState.value = {visible: true, ftpPath, sessionDead: true, resolve: null}
+  const sessionId = data?.sessionId as string | undefined
+  if (!sessionId) return
+  const archivePart = getFtpArchiveFilePart(currentPath.value)
+  if (!archivePart) return
+  if (extractFtpSessionIdFromPath(currentPath.value) !== sessionId) return
+  commitErrorState.value = {visible: true, ftpPath: archivePart, sessionDead: true, resolve: null}
 })
 
 function entryFullPath(entry: FSEntry): string {

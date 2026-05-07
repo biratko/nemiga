@@ -150,7 +150,10 @@ export class FtpSessionManager {
                     })
                 } catch {
                     entry.reconnecting = false
-                    this.notifyServer?.broadcast('ftp-archive-lost', {sessionId: id})
+                    this.notifyServer?.broadcast('ftp-archive-lost', {
+                        sessionId: id,
+                        ftpPaths: dirtyArchives,
+                    })
                     await this.disconnect(id).catch(() => {})
                 }
             }

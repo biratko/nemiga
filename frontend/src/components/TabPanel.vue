@@ -8,6 +8,7 @@ import type {PanelSort, ColumnWidths, SearchColumnWidths} from '@/types/workspac
 import type {PanelAPI} from '@/types/panel'
 import type {FSEntry} from '@/types/fs'
 import FilePanel from './FilePanel.vue'
+import FtpArchiveCommitErrorDialog from './FtpArchiveCommitErrorDialog.vue'
 import TabBar from './TabBar.vue'
 
 const props = defineProps<{
@@ -96,13 +97,34 @@ function getFtpArchiveFilePart(path: string): string | null {
     return path.slice(0, sepIdx)
 }
 
+interface CloseCommitErrorState {
+    visible: boolean
+    ftpPath: string
+    resolve: (() => void) | null
+}
+const closeCommitError = ref<CloseCommitErrorState>({visible: false, ftpPath: '', resolve: null})
+
+async function commitOrPrompt(archivePart: string): Promise<void> {
+    const result = await commitFtpArchive(archivePart)
+    if (result.ok) return
+    await new Promise<void>((resolve) => {
+        closeCommitError.value = {visible: true, ftpPath: archivePart, resolve}
+    })
+}
+
+function onCloseCommitErrorResolved() {
+    const resolve = closeCommitError.value.resolve
+    closeCommitError.value = {visible: false, ftpPath: '', resolve: null}
+    resolve?.()
+}
+
 async function closeTab(index: number) {
     if (tabs.value.length <= 1) return
     snapshotCurrentTab()
     const closingTab = tabs.value[index]
     const archivePart = getFtpArchiveFilePart(closingTab.path)
     if (archivePart) {
-        await commitFtpArchive(archivePart).catch(() => {})
+        await commitOrPrompt(archivePart)
     }
     const sessionId = extractFtpSessionId(closingTab.path)
     if (sessionId) {
@@ -128,7 +150,7 @@ async function closeOtherTabs(keepIndex: number) {
         if (tab === kept) continue
         const archivePart = getFtpArchiveFilePart(tab.path)
         if (archivePart) {
-            await commitFtpArchive(archivePart).catch(() => {})
+            await commitOrPrompt(archivePart)
         }
         const sid = extractFtpSessionId(tab.path)
         if (sid) ftpDisconnect(sid).catch(() => {})
@@ -316,6 +338,12 @@ defineExpose({
                 />
             </template>
         </FilePanel>
+        <FtpArchiveCommitErrorDialog
+            v-if="closeCommitError.visible"
+            :ftp-path="closeCommitError.ftpPath"
+            :session-dead="false"
+            @resolved="onCloseCommitErrorResolved"
+        />
     </div>
 </template>
 

@@ -48,9 +48,9 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-    <ModalDialog title="Archive upload failed">
+    <ModalDialog title="Archive upload failed" data-testid="dialog-ftp-archive-commit">
         <template v-if="phase === 'idle'">
-            <div class="message">
+            <div class="message" data-testid="ftp-archive-commit-message">
                 <template v-if="sessionDead">
                     The FTP session expired. Changes to the archive could not be uploaded.
                 </template>
@@ -60,9 +60,21 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
             </div>
             <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
             <div class="dialog-footer">
-                <button v-if="!sessionDead" class="btn-primary" @click="retry">Retry</button>
-                <button @click="saveLocally">Save locally</button>
-                <button class="btn-danger" @click="discard">Discard changes</button>
+                <button
+                    v-if="!sessionDead"
+                    class="btn-primary"
+                    data-testid="ftp-archive-commit-retry"
+                    @click="retry"
+                >Retry</button>
+                <button
+                    data-testid="ftp-archive-commit-save-locally"
+                    @click="saveLocally"
+                >Save locally</button>
+                <button
+                    class="btn-danger"
+                    data-testid="ftp-archive-commit-discard"
+                    @click="discard"
+                >Discard changes</button>
             </div>
         </template>
 
