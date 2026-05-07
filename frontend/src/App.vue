@@ -29,6 +29,7 @@ import {launchFile} from '@/api/fs'
 import ToastContainer from '@/components/ToastContainer.vue'
 import {setToastDuration, showToast} from '@/composables/useToast'
 import {useBusyState} from '@/composables/useBusyState'
+import {useRemoteSessionInfo} from '@/composables/useRemoteSessionInfo'
 
 interface TabPanelAPI extends PanelAPI {
     createTab(path?: string): void
@@ -59,6 +60,7 @@ const {on: onNotify} = useNotifyWs()
 onNotify('ssh-session-renewed', (data: any) => {
     const {oldSessionId, newSessionId} = data ?? {}
     if (!oldSessionId || !newSessionId || !panelState.value) return
+    useRemoteSessionInfo().rename(oldSessionId, newSessionId)
     const prefix = `ssh://${oldSessionId}`
     const newPrefix = `ssh://${newSessionId}`
     for (const side of ['left', 'right'] as const) {
@@ -76,6 +78,7 @@ onNotify('ssh-session-renewed', (data: any) => {
 onNotify('ftp-session-renewed', (data: any) => {
     const {oldSessionId, newSessionId} = data ?? {}
     if (!oldSessionId || !newSessionId || !panelState.value) return
+    useRemoteSessionInfo().rename(oldSessionId, newSessionId)
     const prefix = `ftp://${oldSessionId}`
     const newPrefix = `ftp://${newSessionId}`
     for (const side of ['left', 'right'] as const) {

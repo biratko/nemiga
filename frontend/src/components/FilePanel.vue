@@ -20,6 +20,7 @@ import FtpArchiveCommitErrorDialog from '@/components/FtpArchiveCommitErrorDialo
 import { formatSize, formatBytes, formatDate } from '@/utils/format'
 import { joinPath } from '@/utils/path'
 import { useColumnResize } from '@/composables/useColumnResize'
+import { useRemoteSessionInfo } from '@/composables/useRemoteSessionInfo'
 import type { ColumnWidths, SearchColumnWidths } from '@/types/workspace'
 
 const props = defineProps<{
@@ -477,6 +478,8 @@ const isWindowsPath = computed(() => /^[A-Za-z]:/.test(displayPath.value.replace
 
 const displayPath = computed(() => props.searchResults ? searchDisplayPath.value : currentPath.value)
 
+const sessionInfo = useRemoteSessionInfo()
+
 const pathSegments = computed(() => {
   const full = displayPath.value
   if (full.startsWith('ftp://') || full.startsWith('ssh://')) {
@@ -486,10 +489,15 @@ const pathSegments = computed(() => {
     const authority = slashIndex === -1 ? rest : rest.slice(0, slashIndex)
     const atIndex = authority.indexOf('@')
     const host = atIndex === -1 ? authority : authority.slice(atIndex + 1)
+    const sessionId = atIndex === -1 ? '' : authority.slice(0, atIndex)
     const prefix = scheme + authority
     const remotePath = slashIndex === -1 ? '' : rest.slice(slashIndex)
     const remoteParts = remotePath.split('/').filter(Boolean)
-    const segments = [{name: host, path: prefix + '/'}]
+    // NAV-0020-02: show "user@host" instead of bare host when the session was
+    // registered via the connect dialog. Falls back to the host portion of the
+    // path so a reload (which loses the in-memory mapping) still renders.
+    const firstName = sessionId ? sessionInfo.displayHost(sessionId, host) : host
+    const segments = [{name: firstName, path: prefix + '/'}]
     for (let i = 0; i < remoteParts.length; i++) {
       segments.push({
         name: remoteParts[i],

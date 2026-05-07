@@ -11,6 +11,7 @@ import {
     type SaveSshConnectionInput,
 } from '@/api/ssh-connections'
 import ModalDialog from './ModalDialog.vue'
+import {useRemoteSessionInfo} from '@/composables/useRemoteSessionInfo'
 
 const emit = defineEmits<{
     close: []
@@ -189,7 +190,12 @@ async function doConnect() {
 
         if (result.ok && result.sessionId) {
             const rp = remotePath.value.trim() || '/'
-            const sshPath = `ssh://${result.sessionId}@${host.value.trim()}${rp.startsWith('/') ? '' : '/'}${rp}`
+            const trimmedHost = host.value.trim()
+            useRemoteSessionInfo().register(result.sessionId, {
+                username: username.value.trim(),
+                host: trimmedHost,
+            })
+            const sshPath = `ssh://${result.sessionId}@${trimmedHost}${rp.startsWith('/') ? '' : '/'}${rp}`
             emit('connected', sshPath, connectionName.value.trim() || undefined)
         } else {
             errorMsg.value = result.error?.message ?? 'Connection failed'
