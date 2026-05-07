@@ -8,10 +8,18 @@ const CONNECT_TIMEOUT_MS = 10_000
 const DEFAULT_SESSION_TIMEOUT_MS = 15 * 60 * 1000
 const DEFAULT_REAPER_INTERVAL_MS = 5 * 60 * 1000
 
+export type SshProviderFactory = (
+    sessionId: string,
+    params: SshConnectionParams,
+    options?: SshProviderOptions,
+) => SshProvider
+
 export interface SshSessionManagerOptions {
     sessionTimeoutMs?: number
     reaperIntervalMs?: number
     providerOptions?: SshProviderOptions
+    /** Override how SshProvider instances are constructed (test seam). */
+    providerFactory?: SshProviderFactory
 }
 
 interface SessionEntry {
@@ -27,11 +35,14 @@ export class SshSessionManager {
     private sessionTimeoutMs: number
     private reaperIntervalMs: number
     private providerOptions?: SshProviderOptions
+    private providerFactory: SshProviderFactory
 
     constructor(options?: SshSessionManagerOptions) {
         this.sessionTimeoutMs = options?.sessionTimeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS
         this.reaperIntervalMs = options?.reaperIntervalMs ?? DEFAULT_REAPER_INTERVAL_MS
         this.providerOptions = options?.providerOptions
+        this.providerFactory = options?.providerFactory ??
+            ((id, params, opts) => new SshProvider(id, params, opts))
         this.reaperTimer = setInterval(() => {
             this.reapStaleSessions().catch(() => {})
         }, this.reaperIntervalMs)
@@ -43,7 +54,7 @@ export class SshSessionManager {
 
     async connect(params: SshConnectionParams): Promise<string> {
         const sessionId = randomUUID()
-        const provider = new SshProvider(sessionId, params, this.providerOptions)
+        const provider = this.providerFactory(sessionId, params, this.providerOptions)
 
         let timer: ReturnType<typeof setTimeout>
         const timeout = new Promise<never>((_, reject) => {
@@ -61,6 +72,31 @@ export class SshSessionManager {
         if (!entry) return
         this.sessions.delete(sessionId)
         await entry.provider.disconnect().catch(() => {})
+    }
+
+    /**
+     * Rotate the SSH session: stand up a new provider with the same credentials,
+     * swap it into the registry, disconnect the old one, and broadcast the
+     * change so the frontend can rewrite open tabs that referenced the old id.
+     * Mirrors FtpSessionManager's renewal broadcast (REM-0012-02).
+     */
+    async renewSession(oldSessionId: string): Promise<string | null> {
+        const entry = this.sessions.get(oldSessionId)
+        if (!entry) return null
+
+        const newSessionId = randomUUID()
+        const newProvider = this.providerFactory(newSessionId, entry.credentials, this.providerOptions)
+        await newProvider.connect(entry.credentials)
+
+        this.sessions.set(newSessionId, {provider: newProvider, credentials: entry.credentials})
+        this.sessions.delete(oldSessionId)
+        await entry.provider.disconnect().catch(() => {})
+
+        this.notifyServer?.broadcast('ssh-session-renewed', {
+            oldSessionId,
+            newSessionId,
+        })
+        return newSessionId
     }
 
     get(sessionId: string): SshProvider | undefined {
