@@ -452,11 +452,17 @@ function handleKeydown(e: KeyboardEvent) {
 
     e.preventDefault()
 
-    // Actions that have their own WS progress dialogs — never blocked by busy state
-    const wsActions = new Set(['file.copy', 'file.move', 'file.delete', 'search', 'file.multi-rename'])
+    // Single-panel WS-progress ops with their own dialogs (NAV-0026-02 — not
+    // blocked by panel busy from listing). copy/move are intentionally absent;
+    // they are cross-panel and gated by NAV-0029-02 below.
+    const wsActions = new Set(['file.delete', 'search', 'file.multi-rename'])
+    const crossPanelActions = new Set(['file.copy', 'file.move'])
 
     // Block non-WS actions when active panel is busy
-    if (isBusy(activePanel.value).value && !wsActions.has(action)) return
+    if (isBusy(activePanel.value).value && !wsActions.has(action) && !crossPanelActions.has(action)) return
+
+    // NAV-0029-02: cross-panel ops (copy/move dialogs) blocked if any panel busy.
+    if (crossPanelActions.has(action) && isAnyBusy().value) return
 
     // Block cross-panel navigation when target panel is busy
     const oppositeId = activePanel.value === 'left' ? 'right' : 'left'
