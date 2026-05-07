@@ -39,11 +39,10 @@ export function useInlineRename(
     if (result.ok) {
       reloadDirectory(newName)
     } else {
-      // Re-open input on error
+      // Re-open input on error and surface the message inline (FILE-0008-06).
       renamingEntry.value = originalName
       renameValue.value = newName
       renameError.value = result.error?.message ?? 'Rename failed'
-      alert(renameError.value)
     }
   }
 

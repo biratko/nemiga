@@ -103,7 +103,7 @@ const {
 } = useDragAndDrop(props.panelId, currentPath, selectedEntries, cursorEntry)
 
 const {
-  renamingEntry, renameValue,
+  renamingEntry, renameValue, renameError,
   startRename, commitRename, cancelRename,
 } = useInlineRename(
   () => currentPath.value,
@@ -231,13 +231,19 @@ function startRenameCurrent() {
 function focusRenameInput(vnode: any) {
   const el = vnode.el as HTMLInputElement
   el.focus()
-  const name = el.value
-  const dotIndex = name.lastIndexOf('.')
-  if (dotIndex > 0) {
-    el.setSelectionRange(0, dotIndex)
-  } else {
-    el.select()
-  }
+  // Defer the selection: Chromium places the caret at the end on focus, and a
+  // setSelectionRange call in the same tick is occasionally clobbered by that
+  // default behavior. Microtask deferral lets the focus settle first.
+  queueMicrotask(() => {
+    if (document.activeElement !== el) return
+    const name = el.value
+    const dotIndex = name.lastIndexOf('.')
+    if (dotIndex > 0) {
+      el.setSelectionRange(0, dotIndex)
+    } else {
+      el.select()
+    }
+  })
 }
 
 const visibleSlice = computed(() =>
@@ -687,11 +693,12 @@ onBeforeUnmount(() => {
                        @keydown.stop
                        @keydown.enter.prevent="commitRename()"
                        @keydown.esc="cancelRename()"
-                       @blur="cancelRename()"
+                       @blur="commitRename()"
                        @vue:mounted="focusRenameInput"
                        @click.stop
                        @dblclick.stop />
-                <span v-else>{{ entry.name }}</span>
+                <span v-else-if="renamingEntry !== entry.name">{{ entry.name }}</span>
+                <span v-if="renamingEntry === entry.name && renameError" class="rename-error">{{ renameError }}</span>
               </span>
             </td>
             <td v-if="isSearchMode" class="col-path">{{ searchRelativePath(entry) }}</td>
@@ -969,6 +976,12 @@ onBeforeUnmount(() => {
   margin: 0;
   outline: none;
   height: 100%;
+}
+
+.rename-error {
+  color: var(--text-error);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
 }
 
 .panel-statusbar {
