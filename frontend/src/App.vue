@@ -27,7 +27,7 @@ import {useNotifyWs} from '@/composables/useNotifyWs'
 import {joinPath} from '@/utils/path'
 import {launchFile} from '@/api/fs'
 import ToastContainer from '@/components/ToastContainer.vue'
-import {setToastDuration} from '@/composables/useToast'
+import {setToastDuration, showToast} from '@/composables/useToast'
 import {useBusyState} from '@/composables/useBusyState'
 
 interface TabPanelAPI extends PanelAPI {
@@ -196,6 +196,7 @@ async function launchExternal(mode: 'edit' | 'view') {
     const fullPath = joinPath(basePath, entry.name)
 
     try {
+        let response: Response
         if (basePath.startsWith('ssh://')) {
             const rest = basePath.slice('ssh://'.length)
             const slashIndex = rest.indexOf('/')
@@ -204,18 +205,23 @@ async function launchExternal(mode: 'edit' | 'view') {
             const sessionId = atIndex === -1 ? authority : authority.slice(0, atIndex)
             const remoteDir = slashIndex === -1 ? '/' : rest.slice(slashIndex)
             const remotePath = remoteDir.endsWith('/') ? remoteDir + entry.name : remoteDir + '/' + entry.name
-            await fetch('/api/ssh/open-file', {
+            response = await fetch('/api/ssh/open-file', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({sessionId, remotePath, mode}),
             })
         } else {
             const endpoint = mode === 'edit' ? '/api/fs/open' : '/api/fs/view'
-            await fetch(endpoint, {
+            response = await fetch(endpoint, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({path: fullPath}),
             })
+        }
+        const data = await response.json().catch(() => null) as {ok?: boolean; error?: {message?: string}} | null
+        if (data && data.ok === false) {
+            const message = data.error?.message ?? `Failed to ${mode} file`
+            showToast(message)
         }
     } catch {
         // best-effort
