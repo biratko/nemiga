@@ -150,6 +150,12 @@ function cancel() {
         <template v-else-if="done && doneInfo">
             <div class="done-msg">Done: {{ doneInfo.files_done }} files ({{ formatBytes(doneInfo.bytes_copied) }})</div>
             <div v-if="doneInfo.errors.length" class="skipped">{{ doneInfo.errors.length }} file(s) skipped</div>
+            <ul v-if="doneInfo.errors.length" class="error-list" data-testid="dialog-error-list">
+                <li v-for="err in doneInfo.errors" :key="err.file" data-testid="dialog-error-item">
+                    <span class="error-file">{{ err.file }}</span>
+                    <span class="error-reason">{{ err.reason }}</span>
+                </li>
+            </ul>
             <div class="dialog-footer">
                 <button @click="emit('close', true)">Close</button>
             </div>
@@ -201,6 +207,34 @@ function cancel() {
 
 .skipped {
     font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.error-list {
+    margin: 4px 0 8px;
+    padding: 4px 8px;
+    list-style: none;
+    max-height: 160px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    background: var(--bg-header);
+    font-size: 11px;
+}
+
+.error-list li {
+    display: flex;
+    gap: 8px;
+    padding: 2px 0;
+    word-break: break-all;
+}
+
+.error-file {
+    flex: 0 0 auto;
+    color: var(--text-primary);
+}
+
+.error-reason {
+    flex: 1 1 auto;
     color: var(--text-secondary);
 }
 </style>
