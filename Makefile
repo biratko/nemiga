@@ -1,6 +1,6 @@
 .PHONY: all build frontend backend clean dev-frontend dev-backend install start \
        install-electron dev-electron build-electron dist-electron dist-electron-deb dist-electron-snap \
-       test test-backend test-frontend test-vitest e2e e2e-install \
+       test test-all test-backend test-frontend test-vitest e2e e2e-install \
        test-coverage coverage-report coverage-update-allowlist
 
 all: build
@@ -71,6 +71,10 @@ e2e-install:
 
 e2e:
 	cd e2e && npx playwright test
+
+# Run everything: unit (backend + frontend) + e2e + REQ-ID coverage report.
+# Single entry point that produces docs/test-coverage.md.
+test-all: test-coverage
 
 # Coverage
 test-coverage:
