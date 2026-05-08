@@ -1,7 +1,8 @@
 .PHONY: all build frontend backend clean dev-frontend dev-backend install start \
        install-electron dev-electron build-electron dist-electron dist-electron-deb dist-electron-snap \
        test test-all test-backend test-frontend test-vitest e2e e2e-install \
-       test-coverage coverage-report coverage-update-allowlist
+       test-coverage coverage-report coverage-update-allowlist \
+       release-tag
 
 # Default target: full production build (frontend + backend).
 all: build
@@ -126,3 +127,14 @@ coverage-report:
 # Prune tests/uncovered-allowlist.txt: drop IDs that are now actually covered.
 coverage-update-allowlist:
 	node tests/coverage.mjs --update-allowlist
+
+# ---------------------------------------------------------------------------
+# Release
+# ---------------------------------------------------------------------------
+
+# Bump electron/package.json to VERSION, commit, and create an annotated
+# v<VERSION> tag. See scripts/release-tag.sh for the actual logic.
+#
+# Usage: make release-tag VERSION=0.1.1
+release-tag:
+	@scripts/release-tag.sh "$(VERSION)"
