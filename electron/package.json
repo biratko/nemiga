@@ -15,9 +15,9 @@
     "build": "node build.js",
     "start": "electron dist/main.js",
     "dev": "node build.js && electron dist/main.js",
-    "dist": "node build.js && electron-builder --linux AppImage",
-    "dist:deb": "node build.js && electron-builder --linux deb",
-    "dist:snap": "node build.js && electron-builder --linux dir && sudo rm -rf parts/ prime/ stage/ && sudo --preserve-env=HOME snapcraft pack --destructive-mode --output dist/"
+    "dist": "node build.js && electron-builder --linux AppImage --publish never",
+    "dist:deb": "node build.js && electron-builder --linux deb --publish never",
+    "dist:snap": "node build.js && electron-builder --linux dir --publish never && sudo rm -rf parts/ prime/ stage/ && sudo --preserve-env=HOME snapcraft pack --destructive-mode --output dist/"
   },
   "dependencies": {
     "@node-rs/crc32": "^1.10.6",
