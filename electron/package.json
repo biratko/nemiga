@@ -5,7 +5,11 @@
   "type": "module",
   "description": "Nemiga — dual-panel file manager",
   "author": "Alexander B <alexanderb@users.noreply.github.com>",
-  "homepage": "https://github.com/alexanderb/nemiga",
+  "homepage": "https://github.com/biratko/nemiga",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/biratko/nemiga.git"
+  },
   "main": "dist/main.js",
   "scripts": {
     "build": "node build.js",

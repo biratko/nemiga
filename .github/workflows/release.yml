@@ -1,0 +1,75 @@
+name: Release Linux .deb
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            electron/package-lock.json
+
+      # Tag-driven release must match electron/package.json — fail fast otherwise.
+      - name: Verify tag matches electron/package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./electron/package.json').version")"
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME ($tag_version) does not match electron/package.json ($pkg_version). Bump the version and retag."
+            exit 1
+          fi
+
+      - name: Cache Electron binary downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/electron
+          key: ${{ runner.os }}-electron-${{ hashFiles('electron/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-electron-
+
+      - name: Install dependencies (backend + frontend + electron)
+        run: make install-electron
+
+      - name: Run unit tests
+        run: make test
+
+      # Builds frontend, bundles electron main+preload via esbuild, packages .deb.
+      - name: Build .deb
+        run: make dist-electron-deb
+
+      # Manual runs (workflow_dispatch): keep artifact for QA without publishing a Release.
+      - name: Upload artifact (manual run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nemiga-deb
+          path: electron/dist/*.deb
+          if-no-files-found: error
+          retention-days: 14
+
+      # Tag pushes (vX.Y.Z): publish a Release with auto-generated notes.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: electron/dist/*.deb
+          generate_release_notes: true
+          fail_on_unmatched_files: true
