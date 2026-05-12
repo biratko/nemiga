@@ -9,7 +9,7 @@ import {addImplicitDirs} from '../implicitDirs.js'
 import {run7z, run7zCapture} from './7z-utils.js'
 import {addWith7z} from './addWith7z.js'
 import {deleteWith7z, mkdirWith7z} from './deleteWith7z.js'
-import {stripTrailingSlashes, entryBaseName, entryExtension, isHiddenEntry, buildExtractPlan} from '../pathUtils.js'
+import {stripTrailingSlashes, entryBaseName, entryExtension, isHiddenEntry, buildExtractPlan, stripSlashes} from '../pathUtils.js'
 
 interface ParsedEntry {
     name: string
@@ -197,8 +197,30 @@ export class SevenZipAdapter implements CreatableAdapter {
         return archivePath.toLowerCase().endsWith('.rar')
     }
 
-    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
-        throw new Error('SevenZipAdapter.renameEntry: not implemented')
+    async renameEntry(archivePath: string, oldInnerPath: string, newInnerPath: string): Promise<void> {
+        if (this.isReadonly(archivePath)) {
+            throw new Error('SevenZipAdapter.renameEntry: archive is readonly (.rar)')
+        }
+        const oldName = stripSlashes(oldInnerPath)
+        const newName = stripSlashes(newInnerPath)
+        if (!oldName || !newName) throw new Error('renameEntry: empty path')
+
+        const entries = await this.listEntries(archivePath)
+        const sourceExists = entries.some(e => e.name === oldName || e.name.startsWith(oldName + '/'))
+        const destClash = entries.some(e => e.name === newName || e.name.startsWith(newName + '/'))
+        if (!sourceExists) throw new Error(`renameEntry: source not found: ${oldName}`)
+        if (destClash) throw new Error(`renameEntry: destination already exists: ${newName}`)
+
+        const renames: Array<[string, string]> = []
+        for (const e of entries) {
+            if (e.name === oldName) renames.push([e.name, newName])
+            else if (e.name.startsWith(oldName + '/')) renames.push([e.name, newName + e.name.slice(oldName.length)])
+        }
+        const flatArgs: string[] = ['rn', archivePath]
+        for (const [from, to] of renames) {
+            flatArgs.push(from, to)
+        }
+        await run7z(flatArgs)
     }
 
     async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
