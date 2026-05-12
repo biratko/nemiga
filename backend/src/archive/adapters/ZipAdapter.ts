@@ -292,8 +292,60 @@ export class ZipAdapter implements CreatableAdapter {
         return false
     }
 
-    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
-        throw new Error('ZipAdapter.renameEntry: not implemented')
+    async renameEntry(archivePath: string, oldInnerPath: string, newInnerPath: string): Promise<void> {
+        const oldStripped = stripSlashes(oldInnerPath)
+        const newStripped = stripSlashes(newInnerPath)
+        if (!oldStripped) throw new Error('renameEntry: empty source path')
+        if (!newStripped) throw new Error('renameEntry: empty destination path')
+
+        let sourceExists = false
+        let destClash = false
+        {
+            const zip = await yauzl.open(archivePath)
+            try {
+                for await (const entry of zip) {
+                    const n: string = entry.filename
+                    const clean = n.endsWith('/') ? n.slice(0, -1) : n
+                    if (clean === oldStripped || clean.startsWith(oldStripped + '/')) sourceExists = true
+                    if (clean === newStripped || clean.startsWith(newStripped + '/')) destClash = true
+                }
+            } finally {
+                await zip.close()
+            }
+        }
+        if (!sourceExists) throw new Error(`renameEntry: source not found: ${oldStripped}`)
+        if (destClash) throw new Error(`renameEntry: destination already exists: ${newStripped}`)
+
+        const newZip = new yazl.ZipFile()
+        const zip = await yauzl.open(archivePath)
+        try {
+            for await (const entry of zip) {
+                const name: string = entry.filename
+                const isDirEntry = name.endsWith('/')
+                const clean = isDirEntry ? name.slice(0, -1) : name
+
+                let outName = name
+                if (clean === oldStripped) {
+                    outName = isDirEntry ? newStripped + '/' : newStripped
+                } else if (clean.startsWith(oldStripped + '/')) {
+                    outName = newStripped + clean.slice(oldStripped.length) + (isDirEntry ? '/' : '')
+                }
+
+                if (isDirEntry) {
+                    newZip.addEmptyDirectory(outName)
+                } else {
+                    const buf = await readEntryBuffer(entry)
+                    newZip.addBuffer(buf, outName)
+                }
+            }
+        } finally {
+            await zip.close()
+        }
+
+        newZip.end()
+        const tmpPath = makeTmpPath(archivePath)
+        await pipeline(newZip.outputStream, createWriteStream(tmpPath))
+        await fsp.rename(tmpPath, archivePath)
     }
 
     async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
