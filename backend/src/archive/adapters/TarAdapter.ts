@@ -424,4 +424,16 @@ export class TarAdapter implements CreatableAdapter {
             }
         }
     }
+
+    isReadonly(_archivePath: string): boolean {
+        return false
+    }
+
+    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
+        throw new Error('TarAdapter.renameEntry: not implemented')
+    }
+
+    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
+        throw new Error('TarAdapter.replaceEntry: not implemented')
+    }
 }

@@ -192,4 +192,16 @@ export class SevenZipAdapter implements CreatableAdapter {
     async mkdirEntry(archivePath: string, innerPath: string): Promise<void> {
         return mkdirWith7z(archivePath, innerPath)
     }
+
+    isReadonly(archivePath: string): boolean {
+        return archivePath.toLowerCase().endsWith('.rar')
+    }
+
+    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
+        throw new Error('SevenZipAdapter.renameEntry: not implemented')
+    }
+
+    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
+        throw new Error('SevenZipAdapter.replaceEntry: not implemented')
+    }
 }

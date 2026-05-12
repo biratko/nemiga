@@ -287,6 +287,18 @@ export class ZipAdapter implements CreatableAdapter {
         await pipeline(newZip.outputStream, createWriteStream(tmpPath))
         await fsp.rename(tmpPath, archivePath)
     }
+
+    isReadonly(_archivePath: string): boolean {
+        return false
+    }
+
+    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
+        throw new Error('ZipAdapter.renameEntry: not implemented')
+    }
+
+    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
+        throw new Error('ZipAdapter.replaceEntry: not implemented')
+    }
 }
 
 /** Read a yauzl entry fully into a buffer. */
