@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import fsp from 'node:fs/promises'
+import os from 'node:os'
 import path from 'node:path'
 import type {FSEntry} from '../../protocol/fs-types.js'
 import type {ArchiveAdapter, ExtractOptions} from '../ArchiveAdapter.js'
@@ -223,7 +224,28 @@ export class SevenZipAdapter implements CreatableAdapter {
         await run7z(flatArgs)
     }
 
-    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
-        throw new Error('SevenZipAdapter.replaceEntry: not implemented')
+    async replaceEntry(archivePath: string, innerPath: string, sourcePath: string): Promise<void> {
+        if (this.isReadonly(archivePath)) {
+            throw new Error('SevenZipAdapter.replaceEntry: archive is readonly (.rar)')
+        }
+        const target = stripSlashes(innerPath)
+        if (!target) throw new Error('replaceEntry: empty inner path')
+
+        const entries = await this.listEntries(archivePath)
+        const direct = entries.find(e => e.name === target)
+        if (!direct) throw new Error(`replaceEntry: entry not found: ${target}`)
+        if (direct.type === 'directory') throw new Error(`replaceEntry: entry is a directory: ${target}`)
+
+        const stagingDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'nemiga-7z-replace-'))
+        try {
+            const stagedPath = path.join(stagingDir, target)
+            await fsp.mkdir(path.dirname(stagedPath), {recursive: true})
+            await fsp.copyFile(sourcePath, stagedPath)
+
+            await run7z(['d', archivePath, target])
+            await run7z(['a', archivePath, target], stagingDir)
+        } finally {
+            await fsp.rm(stagingDir, {recursive: true, force: true}).catch(() => {})
+        }
     }
 }
