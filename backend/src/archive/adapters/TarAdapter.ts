@@ -487,7 +487,57 @@ export class TarAdapter implements CreatableAdapter {
         }
     }
 
-    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
-        throw new Error('TarAdapter.replaceEntry: not implemented')
+    async replaceEntry(archivePath: string, innerPath: string, sourcePath: string): Promise<void> {
+        const target = stripSlashes(innerPath)
+        if (!target) throw new Error('replaceEntry: empty inner path')
+
+        const all = await this.listEntries(archivePath)
+        const direct = all.find(e => e.name === target)
+        if (!direct) throw new Error(`replaceEntry: entry not found: ${target}`)
+        if (direct.type === 'directory') throw new Error(`replaceEntry: entry is a directory: ${target}`)
+
+        const newBuf = await fsp.readFile(sourcePath)
+        const newStat = await fsp.stat(sourcePath)
+
+        const compression = detectCompression(archivePath)
+        const tmpPath = makeTmpPath(archivePath)
+        let renamed = false
+        try {
+            const pack = tar.pack()
+            const writeStream = createWriteStream(tmpPath)
+            const compressor = createCompressStream(compression)
+            const pipelineDone = compressor
+                ? pipeline(pack, compressor, writeStream)
+                : pipeline(pack, writeStream)
+
+            await new Promise<void>((resolve, reject) => {
+                const ext = tar.extract()
+                ext.on('entry', (header, stream, next) => {
+                    const original = stripTrailingSlashes(header.name)
+                    if (original === target && header.type !== 'directory') {
+                        stream.resume()
+                        const replaced = {...header, size: newBuf.length, mtime: new Date(newStat.mtime)}
+                        const entry = pack.entry(replaced, next)
+                        entry.end(newBuf)
+                    } else {
+                        stream.pipe(pack.entry(header, next))
+                    }
+                })
+                ext.on('finish', () => resolve())
+                ext.on('error', reject)
+
+                const fileStream = createReadStream(archivePath)
+                const decompressor = createDecompressStream(compression)
+                if (decompressor) fileStream.pipe(decompressor).pipe(ext)
+                else fileStream.pipe(ext)
+            })
+
+            pack.finalize()
+            await pipelineDone
+            await fsp.rename(tmpPath, archivePath)
+            renamed = true
+        } finally {
+            if (!renamed) await fsp.rm(tmpPath, {force: true}).catch(() => {})
+        }
     }
 }
