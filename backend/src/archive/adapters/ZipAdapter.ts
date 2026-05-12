@@ -348,8 +348,62 @@ export class ZipAdapter implements CreatableAdapter {
         await fsp.rename(tmpPath, archivePath)
     }
 
-    async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
-        throw new Error('ZipAdapter.replaceEntry: not implemented')
+    async replaceEntry(archivePath: string, innerPath: string, sourcePath: string): Promise<void> {
+        const target = stripSlashes(innerPath)
+        if (!target) throw new Error('replaceEntry: empty inner path')
+
+        let targetIsFile = false
+        let targetExists = false
+        {
+            const zip = await yauzl.open(archivePath)
+            try {
+                for await (const entry of zip) {
+                    const n: string = entry.filename
+                    const isDirEntry = n.endsWith('/')
+                    const clean = isDirEntry ? n.slice(0, -1) : n
+                    if (clean === target) {
+                        targetExists = true
+                        targetIsFile = !isDirEntry
+                        break
+                    }
+                    if (clean.startsWith(target + '/')) {
+                        targetExists = true
+                        targetIsFile = false
+                    }
+                }
+            } finally {
+                await zip.close()
+            }
+        }
+        if (!targetExists) throw new Error(`replaceEntry: entry not found: ${target}`)
+        if (!targetIsFile) throw new Error(`replaceEntry: entry is a directory: ${target}`)
+
+        const newContent = await fsp.readFile(sourcePath)
+
+        const newZip = new yazl.ZipFile()
+        const zip = await yauzl.open(archivePath)
+        try {
+            for await (const entry of zip) {
+                const n: string = entry.filename
+                const isDirEntry = n.endsWith('/')
+                const clean = isDirEntry ? n.slice(0, -1) : n
+                if (isDirEntry) {
+                    newZip.addEmptyDirectory(n)
+                } else if (clean === target) {
+                    newZip.addBuffer(newContent, n)
+                } else {
+                    const buf = await readEntryBuffer(entry)
+                    newZip.addBuffer(buf, n)
+                }
+            }
+        } finally {
+            await zip.close()
+        }
+
+        newZip.end()
+        const tmpPath = makeTmpPath(archivePath)
+        await pipeline(newZip.outputStream, createWriteStream(tmpPath))
+        await fsp.rename(tmpPath, archivePath)
     }
 }
 
