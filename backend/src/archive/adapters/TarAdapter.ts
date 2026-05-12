@@ -429,8 +429,62 @@ export class TarAdapter implements CreatableAdapter {
         return false
     }
 
-    async renameEntry(_archivePath: string, _oldInnerPath: string, _newInnerPath: string): Promise<void> {
-        throw new Error('TarAdapter.renameEntry: not implemented')
+    async renameEntry(archivePath: string, oldInnerPath: string, newInnerPath: string): Promise<void> {
+        const oldName = stripSlashes(oldInnerPath)
+        const newName = stripSlashes(newInnerPath)
+        if (!oldName) throw new Error('renameEntry: empty source path')
+        if (!newName) throw new Error('renameEntry: empty destination path')
+
+        let sourceExists = false
+        let destClash = false
+        for (const e of await this.listEntries(archivePath)) {
+            if (e.name === oldName || e.name.startsWith(oldName + '/')) sourceExists = true
+            if (e.name === newName || e.name.startsWith(newName + '/')) destClash = true
+        }
+        if (!sourceExists) throw new Error(`renameEntry: source not found: ${oldName}`)
+        if (destClash) throw new Error(`renameEntry: destination already exists: ${newName}`)
+
+        const compression = detectCompression(archivePath)
+        const tmpPath = makeTmpPath(archivePath)
+        let renamed = false
+        try {
+            const pack = tar.pack()
+            const writeStream = createWriteStream(tmpPath)
+            const compressor = createCompressStream(compression)
+            const pipelineDone = compressor
+                ? pipeline(pack, compressor, writeStream)
+                : pipeline(pack, writeStream)
+
+            await new Promise<void>((resolve, reject) => {
+                const ext = tar.extract()
+                ext.on('entry', (header, stream, next) => {
+                    const original = stripTrailingSlashes(header.name)
+                    let out = header.name
+                    if (original === oldName) {
+                        out = header.type === 'directory' ? newName + '/' : newName
+                    } else if (original.startsWith(oldName + '/')) {
+                        const suffix = original.slice(oldName.length)
+                        out = newName + suffix + (header.type === 'directory' ? '/' : '')
+                    }
+                    const newHeader = {...header, name: out}
+                    stream.pipe(pack.entry(newHeader, next))
+                })
+                ext.on('finish', () => resolve())
+                ext.on('error', reject)
+
+                const fileStream = createReadStream(archivePath)
+                const decompressor = createDecompressStream(compression)
+                if (decompressor) fileStream.pipe(decompressor).pipe(ext)
+                else fileStream.pipe(ext)
+            })
+
+            pack.finalize()
+            await pipelineDone
+            await fsp.rename(tmpPath, archivePath)
+            renamed = true
+        } finally {
+            if (!renamed) await fsp.rm(tmpPath, {force: true}).catch(() => {})
+        }
     }
 
     async replaceEntry(_archivePath: string, _innerPath: string, _sourcePath: string): Promise<void> {
