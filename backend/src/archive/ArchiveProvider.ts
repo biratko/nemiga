@@ -6,6 +6,7 @@ import type {ListResult, CopyResult, MoveResult, DeleteResult, MkdirResult, Rena
 import {ErrorCode} from '../protocol'
 import type {ArchiveAdapter} from './ArchiveAdapter.js'
 import {TempArchiveCache} from './TempArchiveCache.js'
+import {ArchiveFileExtract} from './ArchiveFileExtract.js'
 import {stripSlashes} from './pathUtils.js'
 
 export const ARCHIVE_SEPARATOR = '::'
@@ -36,6 +37,7 @@ export function archiveRealPath(p: string): string {
 export class ArchiveProvider implements FileSystemProvider {
     private adapters: ArchiveAdapter[] = []
     private tempCache = new TempArchiveCache()
+    private fileExtract = new ArchiveFileExtract()
 
     registerAdapter(adapter: ArchiveAdapter): void {
         this.adapters.push(adapter)
@@ -45,8 +47,34 @@ export class ArchiveProvider implements FileSystemProvider {
         return this.adapters.flatMap(a => a.extensions)
     }
 
-    cleanup(): Promise<void> {
-        return this.tempCache.cleanup()
+    async cleanup(): Promise<void> {
+        await this.tempCache.cleanup()
+        await this.fileExtract.cleanup()
+    }
+
+    async extractFileForView(virtualPath: string): Promise<string> {
+        const {archivePath, innerPath} = await this.resolveChain(virtualPath)
+        const adapter = this.findAdapter(archivePath)
+        if (!adapter) throw new Error(`No adapter for archive: ${archivePath}`)
+        return this.fileExtract.extractForView(archivePath + ARCHIVE_SEPARATOR + innerPath, adapter)
+    }
+
+    async extractFileForEdit(
+        virtualPath: string,
+        onChange: (tempPath: string, adapter: ArchiveAdapter, archivePath: string, innerPath: string) => Promise<void>,
+    ): Promise<{tempPath: string; dispose: () => Promise<void>}> {
+        const {archivePath, innerPath} = await this.resolveChain(virtualPath)
+        const adapter = this.findAdapter(archivePath)
+        if (!adapter) throw new Error(`No adapter for archive: ${archivePath}`)
+        if (adapter.isReadonly(archivePath)) {
+            throw new Error(`Archive is readonly: ${archivePath}`)
+        }
+        const inner = stripSlashes(innerPath)
+        return this.fileExtract.extractForEdit(
+            archivePath + ARCHIVE_SEPARATOR + innerPath,
+            adapter,
+            (tempPath) => onChange(tempPath, adapter, archivePath, inner),
+        )
     }
 
     findAdapter(filePath: string): ArchiveAdapter | undefined {
