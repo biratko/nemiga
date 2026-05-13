@@ -517,7 +517,7 @@ function handleKeydown(e: KeyboardEvent) {
             panel?.calcDirSize()
             break
         case 'file.rename':
-            if (!panel?.currentPath.includes('::')) panel?.startRename()
+            panel?.startRename()
             break
         case 'file.multi-rename':
             startMultiRename()
