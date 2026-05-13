@@ -463,7 +463,51 @@ export class ArchiveProvider implements FileSystemProvider {
         }
     }
 
-    async rename(_filePath: string, _newName: string): Promise<RenameResult> {
-        return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'Rename inside archives is not supported'}}
+    async rename(filePath: string, newName: string): Promise<RenameResult> {
+        if (newName.includes('/') || newName.includes('\\')) {
+            return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'newName must not contain path separators'}}
+        }
+
+        let archivePath: string
+        let innerPath: string
+        try {
+            ({archivePath, innerPath} = await this.resolveChain(filePath))
+        } catch (err: any) {
+            return {ok: false, error: {code: ErrorCode.INTERNAL, message: err.message}}
+        }
+
+        const adapter = this.findAdapter(archivePath)
+        if (!adapter) {
+            return {ok: false, error: {code: ErrorCode.INTERNAL, message: `No adapter for archive: ${archivePath}`}}
+        }
+        if (adapter.isReadonly(archivePath)) {
+            return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: `archive is readonly: ${archivePath}`}}
+        }
+
+        const oldInner = stripSlashes(innerPath)
+        if (!oldInner) {
+            return {ok: false, error: {code: ErrorCode.INVALID_REQUEST, message: 'cannot rename the archive root'}}
+        }
+        const lastSlash = oldInner.lastIndexOf('/')
+        const parent = lastSlash >= 0 ? oldInner.slice(0, lastSlash) : ''
+        const newInner = parent ? `${parent}/${newName}` : newName
+
+        let entries: FSEntry[]
+        try {
+            entries = await adapter.listEntries(archivePath)
+        } catch (err: any) {
+            return {ok: false, error: {code: ErrorCode.INTERNAL, message: err.message}}
+        }
+        const clash = entries.some(e => e.name === newInner || e.name.startsWith(newInner + '/'))
+        if (clash) {
+            return {ok: false, error: {code: ErrorCode.ALREADY_EXISTS, message: `entry already exists: ${newInner}`}}
+        }
+
+        try {
+            await adapter.renameEntry(archivePath, oldInner, newInner)
+            return {ok: true}
+        } catch (err: any) {
+            return {ok: false, error: {code: ErrorCode.INTERNAL, message: `Rename in archive failed: ${err.message}`}}
+        }
     }
 }
