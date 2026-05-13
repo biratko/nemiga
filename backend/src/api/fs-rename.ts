@@ -1,7 +1,6 @@
 import type {Request, Response} from 'express'
 import type {ProviderRouter} from '../providers/ProviderRouter.js'
 import {ErrorCode} from '../protocol/errors.js'
-import {isArchivePath} from '../archive/ArchiveProvider.js'
 import path from 'node:path'
 import {fromPosix} from '../utils/platformPath.js'
 
@@ -18,14 +17,6 @@ export function makeFsRenameHandler(router: ProviderRouter) {
         }
 
         const filePath = fromPosix(rawPath)
-
-        if (isArchivePath(filePath)) {
-            res.status(400).json({
-                ok: false,
-                error: {code: ErrorCode.INVALID_REQUEST, message: 'Rename inside archives is not supported'},
-            })
-            return
-        }
 
         const provider = router.resolve(filePath)
         // Also guard the target path
