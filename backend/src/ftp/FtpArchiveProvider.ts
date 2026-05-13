@@ -197,7 +197,9 @@ export class FtpArchiveProvider implements FileSystemProvider {
         const {ftpPart, innerPart} = splitFtpArchivePath(filePath)
         const localArchive = await this.cache.getLocalPath(ftpPart)
         const result = await this.archiveProvider.rename(localArchive + '::' + innerPart, newName)
-        this.cache.markDirty(ftpPart)
+        if (result.ok) {
+            this.cache.markDirty(ftpPart)
+        }
         return result
     }
 
