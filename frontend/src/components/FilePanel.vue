@@ -223,7 +223,6 @@ function onPanelRightMouseUp() {
 
 function startRenameCurrent() {
   if (cursorIndex.value === 0) return
-  if (currentPath.value.includes('::')) return
   const entry = sortedEntries.value[cursorIndex.value - 1]
   if (!entry || entry.name === '..') return
   startRename(entry)
