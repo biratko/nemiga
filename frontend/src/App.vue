@@ -223,7 +223,10 @@ async function launchExternal(mode: 'edit' | 'view') {
         }
         const data = await response.json().catch(() => null) as {ok?: boolean; error?: {message?: string}} | null
         if (data && data.ok === false) {
-            const message = data.error?.message ?? `Failed to ${mode} file`
+            const raw = data.error?.message ?? `Failed to ${mode} file`
+            const message = /readonly|read-only/i.test(raw)
+                ? 'Cannot modify a read-only archive (RAR)'
+                : raw
             showToast(message)
         }
     } catch {
