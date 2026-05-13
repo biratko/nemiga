@@ -4,19 +4,41 @@ import which from 'which'
 import type {Request, Response} from 'express'
 import type {SettingsService} from '../settings/SettingsService.js'
 import type {PathGuard} from '../providers/pathGuard.js'
+import type {ArchiveProvider} from '../archive/ArchiveProvider.js'
+import type {FtpArchiveCache} from '../ftp/FtpArchiveCache.js'
 import {ErrorCode} from '../protocol'
 import {fromPosix} from '../utils/platformPath.js'
+import {isArchivePath, archiveRealPath} from '../archive/ArchiveProvider.js'
+import {isFtpArchivePath} from '../providers/ProviderRouter.js'
+import {launchExternalForArchive} from './launchExternalForArchive.js'
 
-export function makeFsOpenHandler(settingsService: SettingsService, pathGuard: PathGuard) {
-    return makeLaunchHandler(settingsService, pathGuard, 'editor')
+export function makeFsOpenHandler(
+    settingsService: SettingsService,
+    pathGuard: PathGuard,
+    archiveProvider: ArchiveProvider,
+    ftpArchiveCache?: FtpArchiveCache,
+) {
+    return makeLaunchHandler(settingsService, pathGuard, archiveProvider, ftpArchiveCache, 'editor')
 }
 
-export function makeFsViewHandler(settingsService: SettingsService, pathGuard: PathGuard) {
-    return makeLaunchHandler(settingsService, pathGuard, 'viewer')
+export function makeFsViewHandler(
+    settingsService: SettingsService,
+    pathGuard: PathGuard,
+    archiveProvider: ArchiveProvider,
+    ftpArchiveCache?: FtpArchiveCache,
+) {
+    return makeLaunchHandler(settingsService, pathGuard, archiveProvider, ftpArchiveCache, 'viewer')
 }
 
-function makeLaunchHandler(settingsService: SettingsService, pathGuard: PathGuard, settingKey: 'editor' | 'viewer') {
+function makeLaunchHandler(
+    settingsService: SettingsService,
+    pathGuard: PathGuard,
+    archiveProvider: ArchiveProvider,
+    ftpArchiveCache: FtpArchiveCache | undefined,
+    settingKey: 'editor' | 'viewer',
+) {
     const label = settingKey === 'editor' ? 'editor' : 'viewer'
+    const mode: 'view' | 'edit' = settingKey === 'editor' ? 'edit' : 'view'
 
     return async (req: Request, res: Response): Promise<void> => {
         const rawPath = (req.body as {path?: string})?.path
@@ -27,6 +49,18 @@ function makeLaunchHandler(settingsService: SettingsService, pathGuard: PathGuar
         }
 
         const filePath = fromPosix(rawPath)
+
+        if (isArchivePath(filePath)) {
+            if (!isFtpArchivePath(filePath)) {
+                pathGuard.assert(archiveRealPath(filePath))
+            }
+            const result = await launchExternalForArchive(filePath, mode, {
+                archiveProvider, settingsService, ftpArchiveCache,
+            })
+            res.json(result)
+            return
+        }
+
         pathGuard.assert(filePath)
 
         try {
@@ -57,7 +91,7 @@ function makeLaunchHandler(settingsService: SettingsService, pathGuard: PathGuar
             const child = spawn(cmd, args, {detached: process.platform !== 'win32', stdio: 'ignore'})
             child.unref()
             res.json({ok: true})
-        } catch (err) {
+        } catch {
             res.json({ok: false, error: {code: ErrorCode.INTERNAL, message: `failed to launch ${label}`}})
         }
     }

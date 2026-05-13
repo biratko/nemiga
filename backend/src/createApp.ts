@@ -67,7 +67,7 @@ export function createApp(options: AppOptions = {}): AppInstance {
     const wsServer = new WsServer(router, settingsService)
 
     const apiRouters = [
-        fsRouter(router, settingsService, pathGuard),
+        fsRouter(router, settingsService, pathGuard, archiveProvider, ftpArchiveCache),
         workspaceRouter(workspaceService),
         settingsRouter(settingsService),
         ftpRouter(ftpSessionManager),

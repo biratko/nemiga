@@ -2,6 +2,8 @@ import {Router, type ErrorRequestHandler} from 'express'
 import type {ProviderRouter} from '../providers/ProviderRouter.js'
 import type {WorkspaceService} from '../workspace/WorkspaceService.js'
 import type {SettingsService} from '../settings/SettingsService.js'
+import type {ArchiveProvider} from '../archive/ArchiveProvider.js'
+import type {FtpArchiveCache} from '../ftp/FtpArchiveCache.js'
 import {type PathGuard, PathGuardError} from '../providers/pathGuard.js'
 import {ErrorCode} from '../protocol'
 import {makeFsListHandler} from './fs-list.js'
@@ -16,12 +18,18 @@ import {makeFsRenameHandler} from './fs-rename.js'
 import {makeFsRootsHandler} from './fs-roots.js'
 import {ftpConnectionsRouter} from './ftp-connections.js'
 
-export function fsRouter(providerRouter: ProviderRouter, settingsService: SettingsService, pathGuard: PathGuard): Router {
+export function fsRouter(
+    providerRouter: ProviderRouter,
+    settingsService: SettingsService,
+    pathGuard: PathGuard,
+    archiveProvider: ArchiveProvider,
+    ftpArchiveCache?: FtpArchiveCache,
+): Router {
     const router = Router()
 
     router.get('/fs/list', makeFsListHandler(providerRouter))
-    router.post('/fs/open', makeFsOpenHandler(settingsService, pathGuard))
-    router.post('/fs/view', makeFsViewHandler(settingsService, pathGuard))
+    router.post('/fs/open', makeFsOpenHandler(settingsService, pathGuard, archiveProvider, ftpArchiveCache))
+    router.post('/fs/view', makeFsViewHandler(settingsService, pathGuard, archiveProvider, ftpArchiveCache))
     router.post('/fs/rename', makeFsRenameHandler(providerRouter))
     router.get('/fs/roots', makeFsRootsHandler(pathGuard))
     router.post('/fs/terminal', makeFsTerminalHandler(settingsService, pathGuard))
